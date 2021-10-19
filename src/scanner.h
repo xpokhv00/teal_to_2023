@@ -13,6 +13,17 @@
 #ifndef SCANNER_H
 #define SCANNER_H
 
+#include "common.h"
+#include <stdio.h>
 
+typedef enum {
+    TOKEN_IDENTIFIER,
+    // TODO add more types
+} TokenType;
+
+typedef struct {
+    char *str;
+    TokenType type;
+} Token;
 
 #endif // SCANNER_H

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file parser.h
  *
  * @author Hnatovskyj Vítek xhnato00
  * @author Lán Rostislav xlanro00
@@ -8,12 +8,3 @@
  *
  * IFJ projekt 2021
  */
-
-#include "main.h"
-
-int main() {
-    scanner_init(stdin);
-
-
-    scanner_destroy();
-}

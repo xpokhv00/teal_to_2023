@@ -15,6 +15,7 @@
 
 #include "common.h"
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef enum {
     TOKEN_IDENTIFIER,
@@ -25,5 +26,12 @@ typedef struct {
     char *str;
     TokenType type;
 } Token;
+
+
+Status scanner_init(FILE *in);
+
+Status scanner_get_token(Token *pToken, bool end);
+
+Status scanner_destroy();
 
 #endif // SCANNER_H

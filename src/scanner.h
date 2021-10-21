@@ -25,6 +25,10 @@ typedef enum {
 typedef struct {
     char *str;
     TokenType type;
+    // Location of the token in the input file
+    // these are just for debugging purposes
+    unsigned lineNumber;
+    unsigned characterNumber;
 } Token;
 
 

@@ -9,6 +9,8 @@
  * IFJ projekt 2021
  */
 
+// The source of  this file is IJC project 2 2020/2021 (xlanro00)
+
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
 

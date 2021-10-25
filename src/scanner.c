@@ -108,11 +108,9 @@ int handleNumbers(Token *pToken, char input) {
         }
 
         input = getc(inFile);
-        i++;
 
     }
     // Exp
-
     int z = i;
     input = getc(inFile);
     while (true) {
@@ -130,8 +128,6 @@ int handleNumbers(Token *pToken, char input) {
 
         input = getc(inFile);
     }
-
-
     return i;
 }
 
@@ -337,7 +333,6 @@ Status scanner_get_token(Token *pToken, bool end) {
                     pToken->str[0] = input;
                     int g = handleIdentifier(pToken, input);
                     characterCount += g;
-                    //printf("g - %d |TEST - %s \n", g, pToken->str);
                     state = SCANNER_END;
 
                 }

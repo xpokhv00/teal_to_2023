@@ -10,10 +10,25 @@
  */
 
 #include "main.h"
+#include "scanner.h"
 
+void test_scanner(){
+
+    Token *token = malloc(sizeof(Token));
+    token->str = malloc(sizeof(char) * 500);
+    int status;
+    while (true){
+
+        status = scanner_get_token(token, true);
+        printf("status - %d | tokenType - %d | tokenStr - %s\n", status, token->type, token->str);
+
+    }
+
+}
 int main() {
     scanner_init(stdin);
 
+    test_scanner();
 
     scanner_destroy();
 }

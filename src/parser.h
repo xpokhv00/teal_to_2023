@@ -21,6 +21,21 @@
 #include <stdbool.h>
 #include <string.h>
 
+// one non-terminal can be rewritten to this many terminals or non-terminals
+// needed only for practical implementation of LL table
+#define MAX_RULE_LENGTH 10
+
+typedef struct {
+    TokenType type;
+    bool empty;
+    TokenType first[NUM_TOKENS];
+    TokenType follow;
+} ll_line;
+
+typedef struct {
+    TokenType from;
+    TokenType to[MAX_RULE_LENGTH];
+} rule;
 
 
 Status parser_init();

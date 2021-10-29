@@ -17,13 +17,21 @@ void test_scanner(){
     token->str = malloc(sizeof(char) * 500);
     int status;
     while (true){
-
         status = scanner_get_token(token);
         printf("status - %d | tokenType - %d | tokenStr - %s\n", status, token->type, token->str);
-
+        if (status != SUCCESS) {
+            break;
+        }
     }
 
 }
+
+void test_parser() {
+    parser_init();
+    parser_run();
+    parser_destroy();
+}
+
 int main() {
     scanner_init(stdin);
 

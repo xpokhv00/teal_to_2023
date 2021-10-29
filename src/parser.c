@@ -11,8 +11,19 @@
 
 #include "parser.h"
 
-Status parser_init();
+static SyntaxStack stack;
 
-Status parser_run();
+Status parser_init() {
+    syntaxstack_init(&stack);
+    return SUCCESS;
+}
 
-Status parser_destroy();
+Status parser_run() {
+
+    return SUCCESS;
+}
+
+Status parser_destroy() {
+    syntaxstack_destroy(&stack);
+    return SUCCESS;
+}

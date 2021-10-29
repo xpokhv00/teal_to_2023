@@ -18,6 +18,7 @@
 #include <stdbool.h>
 
 typedef enum {
+    NONE = 0, // This is needed for the implementation of LL-table
     TOKEN_IDENTIFIER,
     TOKEN_EOF,
     TOKEN_EOL,
@@ -47,12 +48,16 @@ typedef enum {
     TOKEN_ASSIGN,
     // zmenit
     TOKEN_DVOJTECKAASI,
-    TOKEN_ERROR
+    TOKEN_ERROR,
 
     // TODO add more types
+    NUM_TOKENS, // C dark magic, please keep this at the end
+    // non-terminals go here
+    NT_PROG,
+
 } TokenType;
 
-typedef enum{ // TODO this should be part of token type
+typedef enum { // TODO this should be part of token type
     KEYWORD_DO,
     KEYWORD_ELSE,
     KEYWORD_END,

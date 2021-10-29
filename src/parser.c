@@ -8,3 +8,11 @@
  *
  * IFJ projekt 2021
  */
+
+#include "parser.h"
+
+Status parser_init();
+
+Status parser_run();
+
+Status parser_destroy();

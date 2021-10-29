@@ -22,7 +22,7 @@ Status syntaxstack_push(SyntaxStack* s, TokenType item) {
     if ((s->top + 1) >= s->allocatedElements) {
         size_t numElements = s->allocatedElements + ALLOCATION_CHUNK;
 
-        TokenType *newPtr = realloc(s->data, newSize * sizeof(TokenType));
+        TokenType *newPtr = realloc(s->data, numElements * sizeof(TokenType));
         if (newPtr == NULL) {
             return ERR_INTERNAL;
         }
@@ -32,6 +32,7 @@ Status syntaxstack_push(SyntaxStack* s, TokenType item) {
 
     s->top++;
     s->data[s->top] = item;
+    return SUCCESS;
 }
 
 TokenType syntaxstack_top(SyntaxStack* s) {

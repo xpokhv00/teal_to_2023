@@ -14,12 +14,12 @@
 
 void test_scanner(){
 
-    Token *token = malloc(sizeof(Token));
+    Token *token = malloc(sizeof(Token)); // TODO this is wrong, allocating should be scanner's responsibility
     token->str = malloc(sizeof(char) * 500);
     int status;
     while (true){
 
-        status = scanner_get_token(token, true);
+        status = scanner_get_token(token);
         printf("status - %d | tokenType - %d | tokenStr - %s\n", status, token->type, token->str);
 
     }

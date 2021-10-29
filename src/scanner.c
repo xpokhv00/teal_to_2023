@@ -524,8 +524,7 @@ Status scanner_get_token(Token *pToken) {
                 pToken->str[1] = '\0';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                return state;
-                break;
+                return state; // TODO this should return SUCCESS or ERR_LEXICAL
 
             case SCANNER_END:
                 ungetc(input, inFile);

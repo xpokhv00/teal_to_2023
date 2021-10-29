@@ -10,7 +10,6 @@
  */
 
 #include "main.h"
-#include "scanner.h"
 
 void test_scanner(){
 

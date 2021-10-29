@@ -30,12 +30,12 @@ typedef struct {
     bool empty;
     TokenType first[NUM_TOKENS];
     TokenType follow;
-} ll_line;
+} LL_line;
 
 typedef struct {
     TokenType from;
     TokenType to[MAX_RULE_LENGTH];
-} rule;
+} Rule;
 
 
 Status parser_init();

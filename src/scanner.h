@@ -43,6 +43,23 @@ typedef enum {
     TOKEN_GEQ,
     TOKEN_NEQ,
 
+    // keyword tokens
+    TOKEN_DO,
+    TOKEN_ELSE,
+    TOKEN_END,
+    TOKEN_FUNCTION,
+    TOKEN_GLOBAL,
+    TOKEN_IF,
+    TOKEN_INTEGER,
+    TOKEN_LOCAL,
+    TOKEN_NIL,
+    TOKEN_NUMBER,
+    TOKEN_REQUIRE,
+    TOKEN_RETURN,
+    TOKEN_KEYWORD_STRING,
+    TOKEN_THEN,
+    TOKEN_WHILE,
+
     TOKEN_CONCATENATE,
     TOKEN_GET_LENGTH,
     TOKEN_ASSIGN,
@@ -54,6 +71,10 @@ typedef enum {
     NUM_TOKENS, // C dark magic, please keep this at the end
     // non-terminals go here
     NT_PROG,
+    NT_BODY,
+    NT_DEF_FUNCTION,
+    NT_IF,
+    NT_WHILE,
 
 } TokenType;
 

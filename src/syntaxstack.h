@@ -34,7 +34,7 @@ TokenType syntaxstack_top(SyntaxStack* s);
 
 TokenType syntaxstack_pop(SyntaxStack* s);
 
-bool syntaxstack_isempty(SyntaxStack* s);
+bool syntaxstack_is_empty(SyntaxStack* s);
 
 void syntaxstack_destroy(SyntaxStack* s);
 

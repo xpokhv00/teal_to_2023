@@ -36,20 +36,20 @@ Status syntaxstack_push(SyntaxStack* s, TokenType item) {
 }
 
 TokenType syntaxstack_top(SyntaxStack* s) {
-    if (!syntaxstack_isempty(s)) {
+    if (!syntaxstack_is_empty(s)) {
         return s->data[s->top];
     }
-    return TOKEN_ERROR; // TODO very poor solution, but this should never happen anyway
+    return NONE;
 }
 
 TokenType syntaxstack_pop(SyntaxStack* s) {
-    if (!syntaxstack_isempty(s)) {
+    if (!syntaxstack_is_empty(s)) {
         return s->data[s->top--];
     }
-    return TOKEN_ERROR; // TODO very poor solution, but this should never happen anyway
+    return NONE;
 }
 
-bool syntaxstack_isempty(SyntaxStack* s) {
+bool syntaxstack_is_empty(SyntaxStack* s) {
     return s->top == -1;
 }
 

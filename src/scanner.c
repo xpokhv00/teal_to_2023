@@ -27,8 +27,6 @@ static unsigned characterCount;
 static int nextLetter;
 
 int handleIdentifier(Token *pToken, char input) {
-
-
     int i = 1;
     while (true) {
         input = getc(inFile);
@@ -64,8 +62,7 @@ int handleIdentifier(Token *pToken, char input) {
 }
 
 
-
-int handleNumbers(Token *pToken, char input) {
+int handleNumbers(Token *pToken, char input) { // TODO input must be int. Never ever use char for getc
     int i = 1;
     input = getc(inFile);
     // Int
@@ -206,7 +203,7 @@ Status scanner_init(FILE *in) {
     return SUCCESS;
 }
 
-Status scanner_get_token(Token *pToken, bool end) {
+Status scanner_get_token(Token *pToken) {
 
     memset(pToken->str,0,strlen(pToken->str));
     if (inFile == NULL) {
@@ -214,13 +211,13 @@ Status scanner_get_token(Token *pToken, bool end) {
     }
 
     int state = SCANNER_START;
-    char input;
+    char input; // TODO it must be int, because EOF is not in range of char
 
     while (true) {
         input = getc(inFile);
         characterCount++;
 
-        switch (state) {
+        switch (state) { // TODO add default, that will end with error
             case SCANNER_START:
                 if (input == '\n') {
                     lineCount++;
@@ -312,7 +309,7 @@ Status scanner_get_token(Token *pToken, bool end) {
 
                 } else if (input == '#') {
                     state = SCANNER_SINGLE_OPERATOR;
-                    pToken->type = TOKEN_GET_LENGHT;
+                    pToken->type = TOKEN_GET_LENGTH;
 
                 } else if (input == '\"') {
                     state = SCANNER_STRING;
@@ -539,13 +536,10 @@ Status scanner_get_token(Token *pToken, bool end) {
                 return state;
         }
 
-
         if (input == ' ') {
             break;
         }
-
     }
-
 }
 
 Status scanner_destroy() {

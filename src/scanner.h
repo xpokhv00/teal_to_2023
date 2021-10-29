@@ -43,7 +43,7 @@ typedef enum {
     TOKEN_NEQ,
 
     TOKEN_CONCATENATE,
-    TOKEN_GET_LENGHT,
+    TOKEN_GET_LENGTH,
     TOKEN_ASSIGN,
     // zmenit
     TOKEN_DVOJTECKAASI,
@@ -52,7 +52,7 @@ typedef enum {
     // TODO add more types
 } TokenType;
 
-typedef enum{
+typedef enum{ // TODO this should be part of token type
     KEYWORD_DO,
     KEYWORD_ELSE,
     KEYWORD_END,
@@ -77,9 +77,11 @@ typedef struct {
     // these are just for debugging purposes
     unsigned lineNumber;
     unsigned characterNumber;
-    Keyword keyword;
+    Keyword keyword; // TODO no keyword here, it will be in type variable
 } Token;
 
+
+// TODO this should probably be enum
 #define SCANNER_START 1
 #define SCANNER_STRING 2
 #define SCANNER_NUMBER 3
@@ -96,7 +98,7 @@ typedef struct {
 
 Status scanner_init(FILE *in);
 
-Status scanner_get_token(Token *pToken, bool end);
+Status scanner_get_token(Token *pToken);
 
 Status scanner_destroy();
 

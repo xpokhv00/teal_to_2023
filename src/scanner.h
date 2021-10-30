@@ -71,8 +71,11 @@ typedef enum {
     NUM_TOKENS, // C dark magic, please keep this at the end
     // non-terminals go here
     NT_PROG,
+    NT_PROLOG,
+    NT_PROG_BODY,
     NT_BODY,
-    NT_DEF_FUNCTION,
+    NT_FN_DECL,
+    NT_FN_DEF,
     NT_IF,
     NT_WHILE,
 

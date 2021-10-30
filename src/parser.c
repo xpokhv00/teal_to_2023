@@ -12,8 +12,6 @@
 #include "parser.h"
 
 
-
-
 // The numbering of non-terminals start after the terminals
 // we need the table to start at index 0, so we do not waste too much memory
 #define shift (NUM_TOKENS + 1)
@@ -46,23 +44,17 @@ int ll_lookup(TokenType top, TokenType first) {
     return llTable[top-shift][first];
 }
 
-/*
- * Gives the number of the rule, that should be applied
- * returns zero in case that no rule applies
- * @param[out] rule The index of the applied rule in LL-table
- * @param[in] top The top element of the syntax stack
- * @param[in] in The top element of the syntax stack
- */
 Status apply_rule(SyntaxStack *s, TokenType first) {
     static const Rule ruleTable[] = {
             // this table relies on c array initialization
             // zero translates to TokenType NONE
 
-            // TODO only a placeholder, change to real rules
-            [1] = {.from=NT_PROG, .to={NT_DEF_FUNCTION, NT_PROG}},
-            [2] = {.from=NT_PROG, .to={NT_BODY, NT_PROG}},
-            [3] = {.from=NT_PROG, .to={TOKEN_EOF}},
-            [4] = {.from=NT_BODY, .to={NONE}},
+            // TODO only for illustrative purposes, probably needs to be rewritten
+            [1] = {.from=NT_PROG, .to={NT_PROLOG, NT_PROG_BODY}},
+            [2] = {.from=NT_PROG_BODY, .to={NT_FN_DECL, NT_PROG_BODY}},
+            [3] = {.from=NT_PROG_BODY, .to={NT_FN_DEF, NT_PROG_BODY}},
+            [4] = {.from=NT_PROG_BODY, .to={TOKEN_EOF}},
+            [5] = {.from=NT_PROLOG, .to={TOKEN_REQUIRE, TOKEN_STRING}},
     };
 
     TokenType top = syntaxstack_pop(s);

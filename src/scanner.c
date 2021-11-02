@@ -11,6 +11,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <malloc.h>
 #include "scanner.h"
 
 // The file, that is being read
@@ -21,14 +22,28 @@ static FILE *inFile;
 static unsigned lineCount;
 // characters form the start of the line
 static unsigned characterCount;
+// size of malloc/realloc
+unsigned alloc_size = 500;
 
 // if a letter is read after the token has ended, it is kept here
 // until the next reading
 static int nextLetter;
 
+void str_realloc(Token *pToken){
+    alloc_size *= 2;
+    pToken->str = realloc(pToken->str, alloc_size);
+}
+
 int handleIdentifier(Token *pToken, char input) {
     int i = 1;
     while (true) {
+        if(strlen(pToken->str) > alloc_size -10){
+            str_realloc(pToken);
+        }
+        if (pToken->str == NULL){
+            return ERR_INTERNAL;
+        }
+
         input = getc(inFile);
 
         if ((input >= 65 && input <= 90) || (input >= 97 && input <= 122) || input == '_' ||
@@ -43,30 +58,36 @@ int handleIdentifier(Token *pToken, char input) {
     }
 
     pToken->str[i] = '\0';
-    if(!strcmp(pToken->str, "do")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_DO; return i;}
-    else if(!strcmp(pToken->str, "else")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_ELSE; return i;}
-    else if(!strcmp(pToken->str, "end")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_END; return i;}
-    else if(!strcmp(pToken->str, "function")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_FUNCTION; return i;}
-    else if(!strcmp(pToken->str, "global")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_GLOBAL; return i;}
-    else if(!strcmp(pToken->str, "if")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_IF; return i;}
-    else if(!strcmp(pToken->str, "integer")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_INTEGER; return i;}
-    else if(!strcmp(pToken->str, "local")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_LOCAL; return i;}
-    else if(!strcmp(pToken->str, "nil")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_NIL; return i;}
-    else if(!strcmp(pToken->str, "number")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_NUMBER; return i;}
-    else if(!strcmp(pToken->str, "require")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_REQUIRE; return i;}
-    else if(!strcmp(pToken->str, "return")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_RETURN; return i;}
-    else if(!strcmp(pToken->str, "string")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_STRING; return i;}
-    else if(!strcmp(pToken->str, "then")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_THEN; return i;}
-    else if(!strcmp(pToken->str, "while")){pToken->type = TOKEN_KEYWORD; pToken->keyword = KEYWORD_WHILE; return i;}
+    if(!strcmp(pToken->str, "do")){pToken->type = TOKEN_DO; return i;}
+    else if(!strcmp(pToken->str, "else")){pToken->type = TOKEN_ELSE; return i;}
+    else if(!strcmp(pToken->str, "end")){pToken->type = TOKEN_END;return i;}
+    else if(!strcmp(pToken->str, "function")){pToken->type = TOKEN_FUNCTION; return i;}
+    else if(!strcmp(pToken->str, "global")){pToken->type = TOKEN_GLOBAL;return i;}
+    else if(!strcmp(pToken->str, "if")){pToken->type = TOKEN_IF; return i;}
+    else if(!strcmp(pToken->str, "integer")){pToken->type = TOKEN_INTEGER; return i;}
+    else if(!strcmp(pToken->str, "local")){pToken->type = TOKEN_LOCAL; return i;}
+    else if(!strcmp(pToken->str, "nil")){pToken->type = TOKEN_NIL; return i;}
+    else if(!strcmp(pToken->str, "number")){pToken->type = TOKEN_NUMBER; return i;}
+    else if(!strcmp(pToken->str, "require")){pToken->type = TOKEN_REQUIRE; return i;}
+    else if(!strcmp(pToken->str, "return")){pToken->type = TOKEN_RETURN; return i;}
+    else if(!strcmp(pToken->str, "string")){pToken->type = TOKEN_STRING; return i;}
+    else if(!strcmp(pToken->str, "then")){pToken->type = TOKEN_THEN; return i;}
+    else if(!strcmp(pToken->str, "while")){pToken->type = TOKEN_WHILE; return i;}
     else{pToken->type = TOKEN_IDENTIFIER;return i;}
 }
 
 
-int handleNumbers(Token *pToken, char input) { // TODO input must be int. Never ever use char for getc
+int handleNumbers(Token *pToken, int input) { // TODO input must be int. Never ever use char for getc
     int i = 1;
     input = getc(inFile);
     // Int
     while (true) {
+        if(strlen(pToken->str) > alloc_size -10){
+            str_realloc(pToken);
+        }
+        if (pToken->str == NULL){
+            return ERR_INTERNAL;
+        }
 
         if (isspace(input)) {
             pToken->type = TOKEN_INT;
@@ -87,6 +108,13 @@ int handleNumbers(Token *pToken, char input) { // TODO input must be int. Never 
     int e = i;
     // Double
     while (true) {
+        if(strlen(pToken->str) > alloc_size -10){
+            str_realloc(pToken);
+        }
+        if (pToken->str == NULL){
+            return ERR_INTERNAL;
+        }
+
         if (input >= 48 && input <= 57) {
             pToken->str[i++] = input;
         } else if (input == 'e' || input == 'E') {
@@ -111,6 +139,13 @@ int handleNumbers(Token *pToken, char input) { // TODO input must be int. Never 
     int z = i;
     input = getc(inFile);
     while (true) {
+        if(strlen(pToken->str) > alloc_size -10){
+            str_realloc(pToken);
+        }
+        if (pToken->str == NULL){
+            return ERR_INTERNAL;
+        }
+
 
         if ((input == '+' || input == '-') && z == i) {
             pToken->str[i++] = input;
@@ -128,7 +163,7 @@ int handleNumbers(Token *pToken, char input) { // TODO input must be int. Never 
     return i;
 }
 
-int handleEscapeSequence(char input, int i, Token *pToken) {
+int handleEscapeSequence(int input, int i, Token *pToken) {
     // 0
     if (input == 48) {
         pToken->str[i] = input;
@@ -153,6 +188,7 @@ int handleEscapeSequence(char input, int i, Token *pToken) {
             }
         }
     }
+
         // 1
     else if (input == 49) {
         pToken->str[i] = input;
@@ -203,7 +239,18 @@ Status scanner_init(FILE *in) {
     return SUCCESS;
 }
 
+
+
 Status scanner_get_token(Token *pToken) {
+
+    // realloc doubles this size
+    unsigned alloc_size = 500;
+
+    pToken = malloc(sizeof(Token));
+    pToken->str = malloc(sizeof(char) * alloc_size);
+    if(pToken == NULL || pToken->str == NULL){
+        return ERR_INTERNAL;
+    }
 
     memset(pToken->str,0,strlen(pToken->str));
     if (inFile == NULL) {
@@ -211,13 +258,19 @@ Status scanner_get_token(Token *pToken) {
     }
 
     int state = SCANNER_START;
-    char input; // TODO it must be int, because EOF is not in range of char
+    int input;
 
     while (true) {
         input = getc(inFile);
         characterCount++;
+        if(strlen(pToken->str) > alloc_size -10){
+            str_realloc(pToken);
+        }
+        if (pToken->str == NULL){
+            return ERR_INTERNAL;
+        }
 
-        switch (state) { // TODO add default, that will end with error
+        switch (state) {
             case SCANNER_START:
                 if (input == '\n') {
                     lineCount++;
@@ -285,25 +338,21 @@ Status scanner_get_token(Token *pToken) {
                     }
                 } else if (input == '>') {
                     pToken->str[0] = input;
-                    nextLetter = input;
                     state = SCANNER_DOUBLE_OPERATOR;
                     pToken->type = TOKEN_GT;
 
                 } else if (input == '<') {
                     pToken->str[0] = input;
-                    nextLetter = input;
                     state = SCANNER_DOUBLE_OPERATOR;
                     pToken->type = TOKEN_LT;
 
                 } else if (input == '~') {
                     pToken->str[0] = input;
-                    nextLetter = input;
                     state = SCANNER_DOUBLE_OPERATOR;
                     pToken->type = TOKEN_NEQ;
 
                 } else if (input == '=') {
                     pToken->str[0] = input;
-                    nextLetter = input;
                     state = SCANNER_DOUBLE_OPERATOR;
                     pToken->type = TOKEN_ASSIGN;
 
@@ -332,7 +381,12 @@ Status scanner_get_token(Token *pToken) {
                     characterCount += g;
                     state = SCANNER_END;
 
+                } else if(input == EOF){
+                    pToken->type = TOKEN_EOF;
+                    pToken->lineNumber = lineCount;
+                    pToken->characterNumber = characterCount;
                 }
+
                 break;
 
             case SCANNER_STRING:
@@ -373,6 +427,7 @@ Status scanner_get_token(Token *pToken) {
                     input = getc(inFile);
                     characterCount++;
                 }
+                break;
 
             case SCANNER_COMMENTARY:
                 if (input == '[') {
@@ -398,9 +453,7 @@ Status scanner_get_token(Token *pToken) {
                 break;
 
             case SCANNER_BLOCK_COMMENTARY:
-
                 for (int i = 0; true; ++i) {
-
                     if (input == ']') {
                         input = getc(inFile);
                         characterCount++;
@@ -424,6 +477,7 @@ Status scanner_get_token(Token *pToken) {
                         state = SCANNER_ERROR;
                         break;
                     }
+
                     pToken->str[i] = input;
                     input = getc(inFile);
                     characterCount++;
@@ -432,13 +486,12 @@ Status scanner_get_token(Token *pToken) {
                 break;
 
             case SCANNER_LINE_COMMENTARY:
-
                 for (int i = 0; input != '\n'; ++i) {
-
                     pToken->str[i] = input;
                     input = getc(inFile);
                     characterCount++;
                 }
+
                 pToken->type = TOKEN_COMMENT;
                 state = SCANNER_END;
                 break;
@@ -459,6 +512,7 @@ Status scanner_get_token(Token *pToken) {
 
                             characterCount--;
                         }
+
                         state = SCANNER_END;
                         break;
 
@@ -524,19 +578,16 @@ Status scanner_get_token(Token *pToken) {
                 pToken->str[1] = '\0';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                return state; // TODO this should return SUCCESS or ERR_LEXICAL
+                return SUCCESS;
 
             case SCANNER_END:
                 ungetc(input, inFile);
-                return state;
+                return SUCCESS;
 
+            default:
             case SCANNER_ERROR:
                 ungetc(input, inFile);
-                return state;
-        }
-
-        if (input == ' ') {
-            break;
+                return ERR_LEXICAL;
         }
     }
 }

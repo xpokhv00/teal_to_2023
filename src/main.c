@@ -19,9 +19,7 @@ void test_scanner(){
     while (true){
         status = scanner_get_token(token);
         printf("status - %d | tokenType - %d | tokenStr - %s\n", status, token->type, token->str);
-        if (status != SUCCESS) {
-            break;
-        }
+
     }
 
 }

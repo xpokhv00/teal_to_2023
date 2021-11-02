@@ -63,7 +63,7 @@ typedef enum {
     TOKEN_CONCATENATE,
     TOKEN_GET_LENGTH,
     TOKEN_ASSIGN,
-    // zmenit
+    // TODO zmenit
     TOKEN_DVOJTECKAASI,
     TOKEN_ERROR,
 
@@ -81,23 +81,6 @@ typedef enum {
 
 } TokenType;
 
-typedef enum { // TODO this should be part of token type
-    KEYWORD_DO,
-    KEYWORD_ELSE,
-    KEYWORD_END,
-    KEYWORD_FUNCTION,
-    KEYWORD_GLOBAL,
-    KEYWORD_IF,
-    KEYWORD_INTEGER,
-    KEYWORD_LOCAL,
-    KEYWORD_NIL,
-    KEYWORD_NUMBER,
-    KEYWORD_REQUIRE,
-    KEYWORD_RETURN,
-    KEYWORD_STRING,
-    KEYWORD_THEN,
-    KEYWORD_WHILE
-} Keyword;
 
 typedef struct {
     char *str;
@@ -106,24 +89,23 @@ typedef struct {
     // these are just for debugging purposes
     unsigned lineNumber;
     unsigned characterNumber;
-    Keyword keyword; // TODO no keyword here, it will be in type variable
 } Token;
 
 
-// TODO this should probably be enum
-#define SCANNER_START 1
-#define SCANNER_STRING 2
-#define SCANNER_NUMBER 3
-#define SCANNER_COMMENTARY 4
-#define SCANNER_BLOCK_COMMENTARY 5
-#define SCANNER_ESCAPE_SEQ 6
-#define SCANNER_EOL 7
-#define SCANNER_SINGLE_OPERATOR 8
-#define SCANNER_END 9
-#define SCANNER_ERROR 10
-#define SCANNER_DOUBLE_OPERATOR 11
-#define SCANNER_LINE_COMMENTARY 12
-
+typedef enum {
+    SCANNER_START,
+    SCANNER_STRING,
+    SCANNER_NUMBER,
+    SCANNER_COMMENTARY,
+    SCANNER_BLOCK_COMMENTARY,
+    SCANNER_ESCAPE_SEQ,
+    SCANNER_EOL,
+    SCANNER_SINGLE_OPERATOR,
+    SCANNER_END,
+    SCANNER_ERROR,
+    SCANNER_DOUBLE_OPERATOR,
+    SCANNER_LINE_COMMENTARY
+} ScannerState;
 
 Status scanner_init(FILE *in);
 

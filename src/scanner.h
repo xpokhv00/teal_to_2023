@@ -79,12 +79,12 @@ typedef enum {
     NT_IF,
     NT_WHILE,
 
-} TokenType;
+} SymbolType;
 
 
 typedef struct {
     char *str;
-    TokenType type;
+    SymbolType type;
     // Location of the token in the input file
     // these are just for debugging purposes
     unsigned lineNumber;

@@ -23,7 +23,7 @@
  * @param[in] top The top element of the syntax stack
  * @param[in] in The top element of the syntax stack
  */
-int ll_lookup(TokenType top, TokenType first) {
+int ll_lookup(SymbolType top, SymbolType first) {
     // The first index is array of all terminals
     // for each non-terminal on the top of the stack
     static const int llTable[][NUM_TOKENS] = {
@@ -44,10 +44,10 @@ int ll_lookup(TokenType top, TokenType first) {
     return llTable[top-shift][first];
 }
 
-Status apply_rule(SyntaxStack *s, TokenType first) {
+Status apply_rule(SyntaxStack *s, SymbolType first) {
     static const Rule ruleTable[] = {
             // this table relies on c array initialization
-            // zero translates to TokenType NONE
+            // zero translates to SymbolType NONE
 
             // TODO only for illustrative purposes, probably needs to be rewritten
             [1] = {.from=NT_PROG, .to={NT_PROLOG, NT_PROG_BODY}},
@@ -57,7 +57,7 @@ Status apply_rule(SyntaxStack *s, TokenType first) {
             [5] = {.from=NT_PROLOG, .to={TOKEN_REQUIRE, TOKEN_STRING}},
     };
 
-    TokenType top = syntaxstack_pop(s);
+    SymbolType top = syntaxstack_pop(s);
 
     int rule = ll_lookup(top, first);
     // if no rule applies, the syntax must be invalid
@@ -73,7 +73,7 @@ Status apply_rule(SyntaxStack *s, TokenType first) {
 
     // push all the new items onto the stack
     for (int i=0; i<MAX_RULE_LENGTH; i++) {
-        TokenType newItem = ruleTable[rule].to[i];
+        SymbolType newItem = ruleTable[rule].to[i];
         if (newItem == NONE) {
             break;
         }

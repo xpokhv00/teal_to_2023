@@ -26,15 +26,15 @@
 #define MAX_RULE_LENGTH 10
 
 typedef struct {
-    TokenType type;
+    SymbolType type;
     bool empty;
-    TokenType first[NUM_TOKENS];
-    TokenType follow;
+    SymbolType first[NUM_TOKENS];
+    SymbolType follow;
 } LL_line;
 
 typedef struct {
-    TokenType from;
-    TokenType to[MAX_RULE_LENGTH];
+    SymbolType from;
+    SymbolType to[MAX_RULE_LENGTH];
 } Rule;
 
 

@@ -17,12 +17,12 @@ void syntaxstack_init(SyntaxStack* s) {
     s->allocatedElements = 0;
 }
 
-Status syntaxstack_push(SyntaxStack* s, TokenType item) {
+Status syntaxstack_push(SyntaxStack* s, SymbolType item) {
     // reallocate if not enough space
     if ((s->top + 1) >= s->allocatedElements) {
         size_t numElements = s->allocatedElements + ALLOCATION_CHUNK;
 
-        TokenType *newPtr = realloc(s->data, numElements * sizeof(TokenType));
+        SymbolType *newPtr = realloc(s->data, numElements * sizeof(SymbolType));
         if (newPtr == NULL) {
             return ERR_INTERNAL;
         }
@@ -35,14 +35,14 @@ Status syntaxstack_push(SyntaxStack* s, TokenType item) {
     return SUCCESS;
 }
 
-TokenType syntaxstack_top(SyntaxStack* s) {
+SymbolType syntaxstack_top(SyntaxStack* s) {
     if (!syntaxstack_is_empty(s)) {
         return s->data[s->top];
     }
     return NONE;
 }
 
-TokenType syntaxstack_pop(SyntaxStack* s) {
+SymbolType syntaxstack_pop(SyntaxStack* s) {
     if (!syntaxstack_is_empty(s)) {
         return s->data[s->top--];
     }

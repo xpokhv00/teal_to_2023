@@ -71,13 +71,12 @@ Status apply_rule(SyntaxStack *s, SymbolType first) {
         return ERR_INTERNAL;
     }
 
-    // push all the new items onto the stack
-    for (int i=0; i<MAX_RULE_LENGTH; i++) {
+    // push all the new items onto the stack in reversed order
+    for (int i=MAX_RULE_LENGTH-1; i>=0; i--) {
         SymbolType newItem = ruleTable[rule].to[i];
-        if (newItem == NONE) {
-            break;
+        if (newItem != NONE) {
+            syntaxstack_push(s, newItem);
         }
-        syntaxstack_push(s, newItem);
     }
     return SUCCESS;
 }

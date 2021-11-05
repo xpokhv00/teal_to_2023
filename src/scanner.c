@@ -29,7 +29,7 @@ unsigned alloc_size = 500;
 // until the next reading
 static int nextLetter;
 
-void str_realloc(Token *pToken){
+void str_realloc(Token *pToken) {
     alloc_size *= 2;
     pToken->str = realloc(pToken->str, alloc_size);
 }
@@ -37,10 +37,11 @@ void str_realloc(Token *pToken){
 int handleIdentifier(Token *pToken, char input) {
     int i = 1;
     while (true) {
-        if(strlen(pToken->str) > alloc_size -10){
+        if (strlen(pToken->str) > alloc_size - 10) {
             str_realloc(pToken);
+            printf("i did this shit");
         }
-        if (pToken->str == NULL){
+        if (pToken->str == NULL) {
             return ERR_INTERNAL;
         }
 
@@ -57,181 +58,55 @@ int handleIdentifier(Token *pToken, char input) {
         }
     }
 
-    pToken->str[i] = '\0';
-    if(!strcmp(pToken->str, "do")){pToken->type = TOKEN_DO; return i;}
-    else if(!strcmp(pToken->str, "else")){pToken->type = TOKEN_ELSE; return i;}
-    else if(!strcmp(pToken->str, "end")){pToken->type = TOKEN_END;return i;}
-    else if(!strcmp(pToken->str, "function")){pToken->type = TOKEN_FUNCTION; return i;}
-    else if(!strcmp(pToken->str, "global")){pToken->type = TOKEN_GLOBAL;return i;}
-    else if(!strcmp(pToken->str, "if")){pToken->type = TOKEN_IF; return i;}
-    else if(!strcmp(pToken->str, "integer")){pToken->type = TOKEN_INTEGER; return i;}
-    else if(!strcmp(pToken->str, "local")){pToken->type = TOKEN_LOCAL; return i;}
-    else if(!strcmp(pToken->str, "nil")){pToken->type = TOKEN_NIL; return i;}
-    else if(!strcmp(pToken->str, "number")){pToken->type = TOKEN_NUMBER; return i;}
-    else if(!strcmp(pToken->str, "require")){pToken->type = TOKEN_REQUIRE; return i;}
-    else if(!strcmp(pToken->str, "return")){pToken->type = TOKEN_RETURN; return i;}
-    else if(!strcmp(pToken->str, "string")){pToken->type = TOKEN_STRING; return i;}
-    else if(!strcmp(pToken->str, "then")){pToken->type = TOKEN_THEN; return i;}
-    else if(!strcmp(pToken->str, "while")){pToken->type = TOKEN_WHILE; return i;}
-    else{pToken->type = TOKEN_IDENTIFIER;return i;}
-}
-
-
-int handleNumbers(Token *pToken, int input) { // TODO input must be int. Never ever use char for getc
-    int i = 1;
-    input = getc(inFile);
-    // Int
-    while (true) {
-        if(strlen(pToken->str) > alloc_size -10){
-            str_realloc(pToken);
-        }
-        if (pToken->str == NULL){
-            return ERR_INTERNAL;
-        }
-
-        if (isspace(input)) {
-            pToken->type = TOKEN_INT;
-            return i;
-        } else if (input >= 48 && input <= 57) {
-            pToken->str[i++] = input;
-            pToken->str[i] = '\0';
-        } else if (input == '.') {
-            pToken->str[i++] = input;
-            pToken->type = TOKEN_DOUBLE;
-            break;
-        } else {
-            return -2;
-        }
-        input = getc(inFile);
-    }
-    input = getc(inFile);
-    int e = i;
-    // Double
-    while (true) {
-        if(strlen(pToken->str) > alloc_size -10){
-            str_realloc(pToken);
-        }
-        if (pToken->str == NULL){
-            return ERR_INTERNAL;
-        }
-
-        if (input >= 48 && input <= 57) {
-            pToken->str[i++] = input;
-        } else if (input == 'e' || input == 'E') {
-            pToken->type = TOKEN_EXP;
-            pToken->str[i++] = input;
-            break;
-
-        } else if (isspace(input)) {
-            if (e == i) {
-                return -2;
-            } else {
-                return i;
-            }
-        } else {
-            return -2;
-        }
-
-        input = getc(inFile);
-
-    }
-    // Exp
-    int z = i;
-    input = getc(inFile);
-    while (true) {
-        if(strlen(pToken->str) > alloc_size -10){
-            str_realloc(pToken);
-        }
-        if (pToken->str == NULL){
-            return ERR_INTERNAL;
-        }
-
-
-        if ((input == '+' || input == '-') && z == i) {
-            pToken->str[i++] = input;
-
-        } else if (input >= 48 && input <= 57) {
-            pToken->str[i++] = input;
-        } else if (isspace(input) && z != i) {
-            return i;
-        } else {
-            return -2;
-        }
-
-        input = getc(inFile);
-    }
-    return i;
-}
-
-int handleEscapeSequence(int input, int i, Token *pToken) {
-    // 0
-    if (input == 48) {
-        pToken->str[i] = input;
-        input = getc(inFile);
-        i++;
-        if (input == 48) {
-            pToken->str[i] = input;
-            input = getc(inFile);
-            if (input == 48 || input > 57) {
-                return -2;
-            }
-            pToken->str[++i] = input;
-            return i;
-        } else if (input <= 57) {
-            pToken->str[i] = input;
-            input = getc(inFile);
-            if (input >= 48) {
-                pToken->str[++i] = input;
-                return i;
-            } else {
-                return -2;
-            }
-        }
-    }
-
-        // 1
-    else if (input == 49) {
-        pToken->str[i] = input;
-        input = getc(inFile);
-        if (input >= 48 && input <= 57) {
-            pToken->str[++i] = input;
-            input = getc(inFile);
-            if (input >= 48 && input <= 57) {
-                pToken->str[++i] = input;
-                return i;
-            } else {
-                return -2;
-            }
-        }
-
-    }
-        // 2
-    else if (input == 50) {
-        pToken->str[i] = input;
-        input = getc(inFile);
-        if (input == 53) {
-            pToken->str[++i] = input;
-            input = getc(inFile);
-            if (input <= 53 && input >= 48) {
-                pToken->str[++i] = input;
-                return i;
-            } else {
-                return -2;
-            }
-        } else if (input >= 48 && input <= 52) {
-            pToken->str[++i] = input;
-            input = getc(inFile);
-            if (input >= 48 && input <= 57) {
-                pToken->str[++i] = input;
-                return i;
-            }
-        } else {
-            return -2;
-        }
+    if (!strcmp(pToken->str, "do")) {
+        pToken->type = TOKEN_DO;
+        return i;
+    } else if (!strcmp(pToken->str, "else")) {
+        pToken->type = TOKEN_ELSE;
+        return i;
+    } else if (!strcmp(pToken->str, "end")) {
+        pToken->type = TOKEN_END;
+        return i;
+    } else if (!strcmp(pToken->str, "function")) {
+        pToken->type = TOKEN_FUNCTION;
+        return i;
+    } else if (!strcmp(pToken->str, "global")) {
+        pToken->type = TOKEN_GLOBAL;
+        return i;
+    } else if (!strcmp(pToken->str, "if")) {
+        pToken->type = TOKEN_IF;
+        return i;
+    } else if (!strcmp(pToken->str, "integer")) {
+        pToken->type = TOKEN_INTEGER;
+        return i;
+    } else if (!strcmp(pToken->str, "local")) {
+        pToken->type = TOKEN_LOCAL;
+        return i;
+    } else if (!strcmp(pToken->str, "nil")) {
+        pToken->type = TOKEN_NIL;
+        return i;
+    } else if (!strcmp(pToken->str, "number")) {
+        pToken->type = TOKEN_NUMBER;
+        return i;
+    } else if (!strcmp(pToken->str, "require")) {
+        pToken->type = TOKEN_REQUIRE;
+        return i;
+    } else if (!strcmp(pToken->str, "return")) {
+        pToken->type = TOKEN_RETURN;
+        return i;
+    } else if (!strcmp(pToken->str, "string")) {
+        pToken->type = TOKEN_STRING;
+        return i;
+    } else if (!strcmp(pToken->str, "then")) {
+        pToken->type = TOKEN_THEN;
+        return i;
+    } else if (!strcmp(pToken->str, "while")) {
+        pToken->type = TOKEN_WHILE;
+        return i;
     } else {
-        return -2;
+        pToken->type = TOKEN_IDENTIFIER;
+        return i;
     }
-    return i;
 }
 
 Status scanner_init(FILE *in) {
@@ -240,19 +115,20 @@ Status scanner_init(FILE *in) {
 }
 
 
-
 Status scanner_get_token(Token *pToken) {
 
     // realloc doubles this size
     unsigned alloc_size = 500;
+    unsigned str_index = 0;
 
-    pToken = malloc(sizeof(Token));
-    pToken->str = malloc(sizeof(char) * alloc_size);
-    if(pToken == NULL || pToken->str == NULL){
-        return ERR_INTERNAL;
-    }
+   // pToken = malloc(sizeof(Token));
 
-    memset(pToken->str,0,strlen(pToken->str));
+   // pToken->str = malloc(sizeof(char) * alloc_size);
+    //if (pToken == NULL || pToken->str == NULL) {
+      //  return ERR_INTERNAL;
+    //}
+
+    memset(pToken->str, 0, sizeof(char)*(alloc_size-1));
     if (inFile == NULL) {
         return ERR_INTERNAL;
     }
@@ -262,11 +138,11 @@ Status scanner_get_token(Token *pToken) {
 
     while (true) {
         input = getc(inFile);
-        characterCount++;
-        if(strlen(pToken->str) > alloc_size -10){
+        if (strlen(pToken->str) > alloc_size - 10) {
             str_realloc(pToken);
+            printf("sheesh");
         }
-        if (pToken->str == NULL){
+        if (pToken->str == NULL) {
             return ERR_INTERNAL;
         }
 
@@ -275,292 +151,366 @@ Status scanner_get_token(Token *pToken) {
                 if (input == '\n') {
                     lineCount++;
                     state = SCANNER_EOL;
-
                 } else if (input == ':') {
-                    ungetc(input, inFile);
-                    state = SCANNER_SINGLE_OPERATOR;
+                    state = SCANNER_ASSIGN;
                     pToken->type = TOKEN_DVOJTECKAASI;
+                    characterCount++;
 
                 } else if (input == '+') {
-                    ungetc(input, inFile);
-                    state = SCANNER_SINGLE_OPERATOR;
+                    state = SCANNER_PLUS;
                     pToken->type = TOKEN_PLUS;
+                    characterCount++;
 
                 } else if (input == '-') {
-                    input = getc(inFile);
-                    if (input == '-') {
-                        characterCount++;
-                        state = SCANNER_COMMENTARY;
-                    } else {
-                        ungetc(input, inFile);
-                        state = SCANNER_SINGLE_OPERATOR;
-                        pToken->type = TOKEN_MINUS;
-                    }
-
+                    state = SCANNER_MINUS;
+                    pToken->type = TOKEN_MINUS;
+                    characterCount++;
                 } else if (input == '*') {
-                    ungetc(input, inFile);
-                    state = SCANNER_SINGLE_OPERATOR;
+                    state = SCANNER_MULTIPLY;
                     pToken->type = TOKEN_MULTIPLY;
+                    characterCount++;
 
                 } else if (input == '/') {
-                    input = getc(inFile);
-                    if (input == '/') {
-                        pToken->type = TOKEN_INT_DIVIDE;
-                        characterCount++;
-                        pToken->lineNumber = lineCount;
-                        pToken->characterNumber = characterCount;
-                        pToken->str = "//";
-                        pToken->str[2] = '\0';
-                        state = SCANNER_END;
+                    state = SCANNER_DIVIDE;
+                    pToken->type = TOKEN_DIVIDE;
+                    characterCount++;
 
-                    } else {
-                        ungetc(input, inFile);
-                        state = SCANNER_SINGLE_OPERATOR;
-                        pToken->type = TOKEN_DIVIDE;
-
-                    }
                 } else if (input == '.') {
-                    state = SCANNER_SINGLE_OPERATOR;
-                    input = getc(inFile);
-                    if (input == '.') {
-                        pToken->type = TOKEN_CONCATENATE;
-                        characterCount++;
-                        pToken->lineNumber = lineCount;
-                        pToken->characterNumber = characterCount;
-                        pToken->str = "..";
-                        pToken->str[2] = '\0';
-                        state = SCANNER_END;
+                    state = SCANNER_DOT;
+                    characterCount++;
 
-                    } else {
-                        state = SCANNER_ERROR;
-                        ungetc(input, inFile);
-
-                    }
                 } else if (input == '>') {
-                    pToken->str[0] = input;
-                    state = SCANNER_DOUBLE_OPERATOR;
+                    state = SCANNER_GT;
                     pToken->type = TOKEN_GT;
-
+                    characterCount++;
                 } else if (input == '<') {
-                    pToken->str[0] = input;
-                    state = SCANNER_DOUBLE_OPERATOR;
+                    state = SCANNER_LT;
                     pToken->type = TOKEN_LT;
+                    characterCount++;
 
                 } else if (input == '~') {
-                    pToken->str[0] = input;
-                    state = SCANNER_DOUBLE_OPERATOR;
-                    pToken->type = TOKEN_NEQ;
-
+                    state = SCANNER_TILDA;
+                    characterCount++;
                 } else if (input == '=') {
-                    pToken->str[0] = input;
-                    state = SCANNER_DOUBLE_OPERATOR;
-                    pToken->type = TOKEN_ASSIGN;
-
+                    state = SCANNER_ONE_EQUALS;
+                    characterCount++;
                 } else if (input == '#') {
-                    state = SCANNER_SINGLE_OPERATOR;
+                    state = SCANNER_GET_LENGTH;
                     pToken->type = TOKEN_GET_LENGTH;
-
+                    characterCount++;
                 } else if (input == '\"') {
-                    state = SCANNER_STRING;
+                    state = SCANNER_STRING_START;
                     pToken->type = TOKEN_STRING;
                 } else if (isspace(input)) {
                     continue;
                 } else if (input >= 48 && input <= 57) {
-                    pToken->str[0] = input;
+                    state = SCANNER_INT;
                     characterCount++;
-                    int i = handleNumbers(pToken, input);
-                    if (i == -2) {
-                        state = SCANNER_ERROR;
-                    } else {
-                        state = SCANNER_END;
-                    }
+                    pToken->str[str_index++] = input;
 
                 } else if ((input >= 65 && input <= 90) || (input >= 97 && input <= 122) || input == '_') {
                     pToken->str[0] = input;
-                    int g = handleIdentifier(pToken, input);
-                    characterCount += g;
-                    state = SCANNER_END;
-
-                } else if(input == EOF){
+                    state = SCANNER_IDENTIFIER;
+                    characterCount++;
+                } else if (input == EOF) {
                     pToken->type = TOKEN_EOF;
+                    state = SCANNER_EOF;
                     pToken->lineNumber = lineCount;
                     pToken->characterNumber = characterCount;
                 }
-
                 break;
 
-            case SCANNER_STRING:
-                for (int i = 0; true; ++i) {
-
-                    if (input > 31 && input != '"') {
-                        pToken->str[i] = input;
-                    } else if (input == '"') {
-                        pToken->str[i] = '"';
-                        break;
-                    } else if (input == '\\') {
-                        pToken->str[i] = '\\';
-                        i++;
-                        input = getc(inFile);
-                        if (input == 't') {
-                            pToken->str[i] = '\t';
-                        } else if (input == 'n') {
-                            pToken->str[i] = '\n';
-                        } else if (input == '"') {
-                            pToken->str[i] = '"';
-                        } else if (input == '\\') {
-                            pToken->str[i] = '\\';
-                        } else if (input >= 48 && input <= 50) {
-                            int e = handleEscapeSequence(input, i, pToken);
-                            if (e == -2) {
-                                state = SCANNER_ERROR;
-                                break;
-                            }
-                            // (pocet prectenych znaku ve fukci) - (pocet doted prectenych znaku)
-                            characterCount += e - i;
-                            i = e;
-                        } else {
-                            state = SCANNER_ERROR;
-                            break;
-                        }
-
-                    }
-                    input = getc(inFile);
-                    characterCount++;
+            case SCANNER_STRING_START:
+                if (input != '"' && input > 31) {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_STRING_VALUE;
+                } else if (input == '"') {
+                    state = SCANNER_STRING_FINAL;
+                } else {
+                    state = SCANNER_ERROR;
                 }
-                break;
-
-            case SCANNER_COMMENTARY:
-                if (input == '[') {
-                    input = getc(inFile);
-                    characterCount++;
-                    pToken->type = TOKEN_COMMENT;
-                    if (input == '[') {
-                        state = SCANNER_BLOCK_COMMENTARY;
-                    } else {
-                        state = SCANNER_LINE_COMMENTARY;
-                        pToken->str[0] = '[';
-                        ungetc(input, inFile);
-                        characterCount--;
-                    }
-                } else if (input == '\n') {
-                    state = SCANNER_END;
-                    pToken->type = TOKEN_COMMENT;
-                }else{
-                    ungetc(input, inFile);
-                    state = SCANNER_LINE_COMMENTARY;
-                    pToken->type = TOKEN_COMMENT;
-                }
-                break;
-
-            case SCANNER_BLOCK_COMMENTARY:
-                for (int i = 0; true; ++i) {
-                    if (input == ']') {
-                        input = getc(inFile);
-                        characterCount++;
-
-                        if (input == ']') {
-                            pToken->type = TOKEN_COMMENT;
-                            state = SCANNER_END;
-                            break;
-                        } else if (input == '\n') {
-                            pToken->type = TOKEN_COMMENT;
-                            state = SCANNER_END;
-                        } else {
-                            i++;
-                            pToken->str[i] = input;
-                            ungetc(input, inFile);
-                            characterCount--;
-                        }
-                    }
-
-                    if (input == EOF) {
-                        state = SCANNER_ERROR;
-                        break;
-                    }
-
-                    pToken->str[i] = input;
-                    input = getc(inFile);
-                    characterCount++;
-                }
-
-                break;
-
-            case SCANNER_LINE_COMMENTARY:
-                for (int i = 0; input != '\n'; ++i) {
-                    pToken->str[i] = input;
-                    input = getc(inFile);
-                    characterCount++;
-                }
-
-                pToken->type = TOKEN_COMMENT;
-                state = SCANNER_END;
-                break;
-
-            case SCANNER_DOUBLE_OPERATOR:
                 characterCount++;
-                switch (pToken->type) {
-                    case TOKEN_ASSIGN:
-                        if (input == '=') {
-                            pToken->type = TOKEN_EQUALS;
-                            pToken->str[1] = '=';
-                            pToken->str[2] = '\0';
-                            pToken->characterNumber = characterCount;
-                            pToken->lineNumber = lineCount;
-                            pToken->type = TOKEN_EQUALS;
-                        } else {
-                            ungetc(input, inFile);
+                break;
+            case SCANNER_STRING_VALUE:
+                if (input > 31 && input != '"') {
+                    pToken->str[str_index++] = input;
+                } else if (input == '\\') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_ESC_SEQ;
+                } else if (input == '"') {
+                    state = SCANNER_STRING_FINAL;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_STRING_FINAL:
+                pToken->type = TOKEN_STRING;
+                pToken->characterNumber = characterCount;
+                pToken->lineNumber = lineCount;
+                str_index = 0;
+                ungetc(input, inFile);
+                return state;
+            case SCANNER_ESC_SEQ:
+                if (input == '0') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_0;
+                } else if (input == '1') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_1;
+                } else if (input == '2') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_2;
+                } else if (input == 't' || input == 'n' || input == '"' || input == '/') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_STRING_VALUE;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_SEQ_0:
+                if (input == '0') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_00;
+                } else if (input > '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_DEF;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_SEQ_1:
+                if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_DEF;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_SEQ_2:
+                if (input == '5') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_25;
+                } else if (input >= '0' && input <= '4') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_SEQ_DEF;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_SEQ_00:
+                if (input >= '1' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_STRING_VALUE;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_SEQ_DEF:
+                if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_STRING_VALUE;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_SEQ_25:
+                if (input >= '0' && input <= '5') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_STRING_VALUE;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
 
-                            characterCount--;
-                        }
+            case SCANNER_MINUS:
+                if (input == '-') {
+                    state = SCANNER_COMMENT_START;
+                    str_index = 0;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->str[0] = '-';
+                    pToken->lineNumber = lineCount;
+                    pToken->characterNumber = characterCount;
+                    return state;
+                }
+                characterCount++;
+                break;
+            case SCANNER_PLUS:
+                ungetc(input, inFile);
+                pToken->str[0] = '+';
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
+            case SCANNER_DIVIDE:
+                if (input == '/') {
+                    pToken->str[0] = '/';
+                    state = SCANNER_INT_DIVIDE;
+                    break;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->str[0] = '/';
+                    pToken->lineNumber = lineCount;
+                    pToken->characterNumber = characterCount;
+                    return state;
+                }
+            case SCANNER_INT_DIVIDE:
+                ungetc(input, inFile);
+                pToken->str[1] = '/';
+                pToken->type = TOKEN_INT_DIVIDE;
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = ++characterCount;
+                return state;
+            case SCANNER_MULTIPLY:
+                ungetc(input, inFile);
+                pToken->str[0] = '*';
+                pToken->characterNumber = characterCount;
+                pToken->lineNumber = lineCount;
+                return state;
+            case SCANNER_DOT:
+                if (input == '.') {
+                    pToken->str[0] = '.';
+                    state = SCANNER_CONCATENATE;
+                    characterCount++;
+                    pToken->type = TOKEN_CONCATENATE;
+                } else {
+                    state = SCANNER_ERROR;
+                    ungetc(input, inFile);
+                }
+                break;
+            case SCANNER_CONCATENATE:
+                ungetc(input, inFile);
+                pToken->str[1] = '.';
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
+            case SCANNER_ASSIGN:
+                ungetc(input, inFile);
+                pToken->str[0] = ':';
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
 
-                        state = SCANNER_END;
-                        break;
+            case SCANNER_ONE_EQUALS:
+                if (input == '=') {
+                    state = SCANNER_EQ;
+                    pToken->type = TOKEN_EQUALS;
+                    pToken->str[0] = '=';
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                characterCount++;
+                break;
+            case SCANNER_EQ:
+                ungetc(input, inFile);
+                pToken->str[1] = '=';
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
 
-                    case TOKEN_NEQ:
-                        if (input == '=') {
-                            pToken->str[1] = '=';
-                            pToken->str[2] = '\0';
-                            pToken->lineNumber = lineCount;
-                            pToken->characterNumber = characterCount;
-                            state = SCANNER_END;
-                        } else {
-                            pToken->type = TOKEN_ERROR;
-                            state = SCANNER_ERROR;
-                            ungetc(input, inFile);
-                            characterCount--;
-                        }
-                        break;
-                    case TOKEN_LT:
-                        if (input == '=') {
-                            pToken->type = TOKEN_LEQ;
-                            pToken->str[1] = '=';
-                            pToken->str[2] = '\0';
-                            pToken->lineNumber = lineCount;
-                            pToken->characterNumber = characterCount;
-                            state = SCANNER_END;
-                        } else {
-                            ungetc(input, inFile);
-                            characterCount--;
-                            input = '>';
-                            state = SCANNER_SINGLE_OPERATOR;
-                        }
-                        break;
+            case SCANNER_LT:
+                if (input == '=') {
+                    characterCount++;
+                    state = SCANNER_LEQ;
+                    break;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->str[0] = '<';
+                    pToken->lineNumber = lineCount;
+                    pToken->characterNumber = characterCount;
+                    return state;
+                }
+            case SCANNER_GT:
+                if (input == '=') {
+                    state = SCANNER_GTE;
+                    pToken->characterNumber = ++characterCount;
+                    break;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->str[0] = '>';
+                    pToken->lineNumber = lineCount;
+                    pToken->characterNumber = characterCount;
+                    return state;
+                }
+            case SCANNER_LEQ:
+                ungetc(input, inFile);
+                pToken->str[1] = '=';
+                pToken->type = TOKEN_LEQ;
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
+            case SCANNER_GTE:
+                ungetc(input, inFile);
+                pToken->str[1] = '=';
+                pToken->type = TOKEN_GEQ;
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
+            case SCANNER_TILDA:
+                if (input == '=') {
+                    pToken->str[0] = '~';
+                    pToken->type = TOKEN_NEQ;
+                    state = SCANNER_NEQ;
+                } else {
+                    state = SCANNER_ERROR;
+                }
+                break;
+            case SCANNER_NEQ:
+                ungetc(input, inFile);
+                pToken->str[1] = '=';
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
 
-                    case TOKEN_GT:
-                        if (input == '=') {
-                            pToken->type = TOKEN_GEQ;
-                            pToken->str[1] = '=';
-                            pToken->str[2] = '\0';
-                            pToken->lineNumber = lineCount;
-                            pToken->characterNumber = characterCount;
-                            state = SCANNER_END;
-                        } else {
-                            ungetc(input, inFile);
-                            characterCount--;
-                            input = '<';
-                            state = SCANNER_SINGLE_OPERATOR;
-                        }
-                        break;
+            case SCANNER_GET_LENGTH:
+                ungetc(input, inFile);
+                pToken->str[1] = '#';
+                pToken->lineNumber = lineCount;
+                pToken->characterNumber = characterCount;
+                return state;
+
+            case SCANNER_COMMENT_START:
+                if (input == '\n') {
+                    state = SCANNER_COMMENT_END;
+                } else if (input == '[') {
+                    state = SCANNER_ALMOST_BLOCK;
+                } else {
+                    state = SCANNER_COMMENT;
+                }
+                break;
+            case SCANNER_ALMOST_BLOCK:
+                if (input == '[') {
+                    state = SCANNER_COMMENT_BLOCK;
+                } else {
+                    state = SCANNER_COMMENT;
+                }
+                break;
+            case SCANNER_COMMENT:
+                if (input == '\n') {
+                    state = SCANNER_COMMENT_END;
+                }
+                break;
+            case SCANNER_COMMENT_END:
+                ungetc(input, inFile);
+                state = SCANNER_START;
+                break;
+            case SCANNER_COMMENT_BLOCK:
+                if (input == ']') {
+                    state = SCANNER_ALMOST_END;
+                }
+                break;
+            case SCANNER_ALMOST_END:
+                if (input == ']') {
+                    state = SCANNER_COMMENT_END;
+                } else {
+                    state = SCANNER_COMMENT_BLOCK;
                 }
                 break;
 
@@ -570,24 +520,108 @@ Status scanner_get_token(Token *pToken) {
                 pToken->type = TOKEN_EOL;
                 lineCount += 1;
                 characterCount = 0;
+                return state;
+
+            case SCANNER_INT:
+                if (input >= '0' && input <= '9') {
+
+                } else if (input == '.') {
+                    state = SCANNER_NUMBER_POINT;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->characterNumber = ++characterCount;
+                    pToken->lineNumber = lineCount;
+                    pToken->type = TOKEN_INT;
+                    return state;
+                }
+                pToken->str[str_index++] = input;
+                characterCount++;
                 break;
 
+            case SCANNER_NUMBER_POINT:
+                if (input == 'e' || input == 'E') {
+                    pToken->str[str_index++] = input;
+                    characterCount++;
+                    state = SCANNER_EXP_BASE;
+                } else if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_DOUBLE;
+                    characterCount++;
+                } else {
+                    ungetc(input, inFile);
+                    state = SCANNER_ERROR;
+                }
+                break;
+            case SCANNER_DOUBLE:
+                if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    characterCount++;
+                } else if (input == 'e' || input == 'E') {
+                    pToken->str[str_index++] = input;
+                    characterCount++;
+                    state = SCANNER_EXP_BASE;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->characterNumber = ++characterCount;
+                    pToken->lineNumber = lineCount;
+                    pToken->type = TOKEN_DOUBLE;
+                    return state;
+                }
+                break;
+            case SCANNER_EXP_BASE:
+                if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    characterCount++;
+                    state = SCANNER_EXP;
+                } else if (input == '+' || input == '-') {
+                    pToken->str[str_index++] = input;
+                    state = SCANNER_EXP_SIGN;
+                } else {
+                    ungetc(input, inFile);
+                    state = SCANNER_ERROR;
+                }
+                break;
+            case SCANNER_EXP_SIGN:
+                if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    characterCount++;
+                    state = SCANNER_EXP;
+                } else {
+                    ungetc(input, inFile);
+                    state = SCANNER_ERROR;
+                }
+                break;
+            case SCANNER_EXP:
+                if (input >= '0' && input <= '9') {
+                    pToken->str[str_index++] = input;
+                    characterCount++;
+                } else {
+                    ungetc(input, inFile);
+                    pToken->characterNumber = ++characterCount;
+                    pToken->lineNumber = lineCount;
+                    pToken->type = TOKEN_EXP;
+                    return state;
+                }
+                break;
 
-            case SCANNER_SINGLE_OPERATOR:
-                pToken->str[0] = input;
-                pToken->str[1] = '\0';
-                pToken->lineNumber = lineCount;
-                pToken->characterNumber = characterCount;
-                return SUCCESS;
-
-            case SCANNER_END:
+            case SCANNER_IDENTIFIER:
                 ungetc(input, inFile);
-                return SUCCESS;
+                characterCount += handleIdentifier(pToken, input);
+                printf("%s\n", pToken->str);
+                pToken->lineNumber = lineCount;
+                return state;
+
+            case SCANNER_EOF:
+                return state;
+
 
             default:
             case SCANNER_ERROR:
+                pToken->characterNumber = characterCount;
+                pToken->lineNumber = lineCount;
+                str_index = 0;
                 ungetc(input, inFile);
-                return ERR_LEXICAL;
+                return state;
         }
     }
 }

@@ -10,13 +10,22 @@
  */
 
 #include "main.h"
-
+Token *TokenInit(){
+    Token *Token;
+    if ((Token = malloc(sizeof(Token))) == NULL){
+        return NULL;
+    }
+    if ((Token->str = malloc(500)) == NULL){
+        free(Token);
+        return NULL;
+    }
+    return Token;
+}
 void test_scanner(){
 
-    Token *token = malloc(sizeof(Token)); // TODO this is wrong, allocating should be scanner's responsibility
-    token->str = malloc(sizeof(char) * 500);
-    int status;
-    while (true){
+    Token *token = TokenInit();
+    int status = 1;
+    while (status != SCANNER_EOF){
         status = scanner_get_token(token);
         printf("status - %d | tokenType - %d | tokenStr - %s\n", status, token->type, token->str);
 

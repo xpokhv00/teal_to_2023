@@ -27,7 +27,7 @@ unsigned alloc_size = 500;
 
 // if a letter is read after the token has ended, it is kept here
 // until the next reading
-static int nextLetter;
+//static int nextLetter;
 
 void str_realloc(Token *pToken) {
     alloc_size *= 2;
@@ -47,6 +47,7 @@ int handleIdentifier(Token *pToken, char input) {
 
         input = getc(inFile);
 
+        // TODO no magic numbers, use character literals like 'a' or '7'
         if ((input >= 65 && input <= 90) || (input >= 97 && input <= 122) || input == '_' ||
             (input >= 48 && input <= 57)) {
             pToken->str[i++] = input;
@@ -77,7 +78,7 @@ int handleIdentifier(Token *pToken, char input) {
         pToken->type = TOKEN_IF;
         return i;
     } else if (!strcmp(pToken->str, "integer")) {
-        pToken->type = TOKEN_INTEGER;
+        pToken->type = TOKEN_INTEGER_KW;
         return i;
     } else if (!strcmp(pToken->str, "local")) {
         pToken->type = TOKEN_LOCAL;
@@ -86,7 +87,7 @@ int handleIdentifier(Token *pToken, char input) {
         pToken->type = TOKEN_NIL;
         return i;
     } else if (!strcmp(pToken->str, "number")) {
-        pToken->type = TOKEN_NUMBER;
+        pToken->type = TOKEN_NUMBER_KW;
         return i;
     } else if (!strcmp(pToken->str, "require")) {
         pToken->type = TOKEN_REQUIRE;
@@ -95,7 +96,7 @@ int handleIdentifier(Token *pToken, char input) {
         pToken->type = TOKEN_RETURN;
         return i;
     } else if (!strcmp(pToken->str, "string")) {
-        pToken->type = TOKEN_STRING;
+        pToken->type = TOKEN_STRING_LIT;
         return i;
     } else if (!strcmp(pToken->str, "then")) {
         pToken->type = TOKEN_THEN;
@@ -153,7 +154,7 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_EOL;
                 } else if (input == ':') {
                     state = SCANNER_ASSIGN;
-                    pToken->type = TOKEN_DVOJTECKAASI;
+                    pToken->type = TOKEN_COLON;
                     characterCount++;
 
                 } else if (input == '+') {
@@ -200,7 +201,7 @@ Status scanner_get_token(Token *pToken) {
                     characterCount++;
                 } else if (input == '\"') {
                     state = SCANNER_STRING_START;
-                    pToken->type = TOKEN_STRING;
+                    pToken->type = TOKEN_STRING_LIT;
                 } else if (isspace(input)) {
                     continue;
                 } else if (input >= 48 && input <= 57) {
@@ -245,7 +246,7 @@ Status scanner_get_token(Token *pToken) {
                 characterCount++;
                 break;
             case SCANNER_STRING_FINAL:
-                pToken->type = TOKEN_STRING;
+                pToken->type = TOKEN_STRING_LIT;
                 pToken->characterNumber = characterCount;
                 pToken->lineNumber = lineCount;
                 str_index = 0;
@@ -531,7 +532,7 @@ Status scanner_get_token(Token *pToken) {
                     ungetc(input, inFile);
                     pToken->characterNumber = ++characterCount;
                     pToken->lineNumber = lineCount;
-                    pToken->type = TOKEN_INT;
+                    pToken->type = TOKEN_INTEGER_LIT;
                     return state;
                 }
                 pToken->str[str_index++] = input;
@@ -564,7 +565,7 @@ Status scanner_get_token(Token *pToken) {
                     ungetc(input, inFile);
                     pToken->characterNumber = ++characterCount;
                     pToken->lineNumber = lineCount;
-                    pToken->type = TOKEN_DOUBLE;
+                    pToken->type = TOKEN_DOUBLE_LIT;
                     return state;
                 }
                 break;
@@ -599,7 +600,7 @@ Status scanner_get_token(Token *pToken) {
                     ungetc(input, inFile);
                     pToken->characterNumber = ++characterCount;
                     pToken->lineNumber = lineCount;
-                    pToken->type = TOKEN_EXP;
+                    pToken->type = TOKEN_EXP_LIT;
                     return state;
                 }
                 break;
@@ -624,6 +625,10 @@ Status scanner_get_token(Token *pToken) {
                 return state;
         }
     }
+}
+
+void scanner_destroy_token(Token *pToken) {
+    free(pToken->str);
 }
 
 Status scanner_destroy() {

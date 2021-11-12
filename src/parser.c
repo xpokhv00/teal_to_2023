@@ -11,112 +11,212 @@
 
 #include "parser.h"
 
+// current input token
+static Token token;
+// if anything fails, it will be stored here
+static Status status;
 
-// The numbering of non-terminals start after the terminals
-// we need the table to start at index 0, so we do not waste too much memory
-#define shift (NUM_TOKENS + 1)
-
-/*
- * Gives the number of the rule, that should be applied
- * returns zero in case that no rule applies
- * @param[out] rule The index of the applied rule in LL-table
- * @param[in] top The top element of the syntax stack
- * @param[in] in The top element of the syntax stack
- */
-int ll_lookup(SymbolType top, SymbolType first) {
-    // The first index is array of all terminals
-    // for each non-terminal on the top of the stack
-    static const int llTable[][NUM_TOKENS] = {
-            // this table relies on C array initialization
-            // All fields, that do not have explicit value (rule number)
-            // are zero
-            [NT_PROG-shift] = {[TOKEN_IDENTIFIER]=1, [TOKEN_FUNCTION]=2, [TOKEN_LOCAL]=5},
-            [NT_IF-shift] = {[TOKEN_IF]=7},
-            [NT_WHILE-shift] = {[TOKEN_WHILE]=9},
-    };
-
-    // if there is a terminal on the top of the stack
-    if (top < NUM_TOKENS) {
-        // this function is not designed to deal with terminals
-        return 0;
+// gets the token of the required type
+// and gets a new one from the scanner
+// returns false, if type does not match
+bool eatToken(TokenType type) {
+    if (token.type != type) {
+        return false;
     }
-    // return the corresponding rule number from the table
-    return llTable[top-shift][first];
+    scanner_destroy_token(&token);
+    status = scanner_get_token(&token);
+    if (status != SUCCESS) {
+        // this might not be the best practise
+        return false;
+    }
+    return true;
 }
 
-Status apply_rule(SyntaxStack *s, SymbolType first) {
-    static const Rule ruleTable[] = {
-            // this table relies on c array initialization
-            // zero translates to SymbolType NONE
+bool nt_prog();
+bool nt_prolog();
+bool nt_prog_body();
+bool nt_fn_decl();
+bool nt_fn_decl_params();
+bool nt_fn_def();
 
-            // TODO only for illustrative purposes, probably needs to be rewritten
-            [1] = {.from=NT_PROG, .to={NT_PROLOG, NT_PROG_BODY}},
-            [2] = {.from=NT_PROG_BODY, .to={NT_FN_DECL, NT_PROG_BODY}},
-            [3] = {.from=NT_PROG_BODY, .to={NT_FN_DEF, NT_PROG_BODY}},
-            [4] = {.from=NT_PROG_BODY, .to={TOKEN_EOF}},
-            [5] = {.from=NT_PROLOG, .to={TOKEN_REQUIRE, TOKEN_STRING}},
-    };
 
-    SymbolType top = syntaxstack_pop(s);
+bool nt_prog() {
+    bool found = false;
 
-    int rule = ll_lookup(top, first);
-    // if no rule applies, the syntax must be invalid
-    if (rule == 0) {
-        return ERR_SYNTAX;
+    switch (token.type) {
+        // pravidlo <prog> -> <prolog> <prog_body>
+        case TOKEN_REQUIRE:
+            found = nt_prolog() && nt_prog_body();
+            break;
+
+        default:
+            break;
     }
-
-    if (top != ruleTable[rule].from) {
-        // this should absolutely never happen
-        // LL table must be wrong
-        return ERR_INTERNAL;
-    }
-
-    // push all the new items onto the stack in reversed order
-    for (int i=MAX_RULE_LENGTH-1; i>=0; i--) {
-        SymbolType newItem = ruleTable[rule].to[i];
-        if (newItem != NONE) {
-            syntaxstack_push(s, newItem);
-        }
-    }
-    return SUCCESS;
+    return found;
 }
+
+bool nt_prolog() {
+    bool found = false;
+
+    switch (token.type) {
+        // pravidlo <prolog> -> TOKEN_REQUIRE TOKEN_STRING_LIT
+        case TOKEN_REQUIRE:
+            scanner_destroy_token(&token);
+            status = scanner_get_token(&token);
+            if (status != SUCCESS) {
+                break;
+            }
+            // the next token must be string literal "ifj21"
+            if (token.type != TOKEN_STRING_LIT) {
+                break;
+            }
+            if (strcmp(token.str, "ifj21") != 0) {
+                status = ERR_SEMANTIC_OTHER;
+                break;
+            }
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_prog_body() {
+    bool found = false;
+
+    switch (token.type) {
+        // pravidlo <prog_body> -> <fn_decl> <prog_body>
+        case TOKEN_GLOBAL:
+            found = nt_fn_decl() && nt_prog_body();
+            break;
+
+        case TOKEN_FUNCTION:
+            found = nt_fn_def() && nt_prog_body();
+            break;
+
+        // pravidlo <prog_body> -> eps
+        case TOKEN_EOF:
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_fn_decl() {
+    bool found = false;
+
+    switch (token.type) {
+        // pravidlo <fn_decl> ->
+        // TOKEN_GLOBAL TOKEN_IDENTIFIER TOKEN_COLON TOKEN_FUNCTION
+        // TOKEN_PAR_L <fn_decl_params> TOKEN_PAR_R TOKEN_COLON <type>
+        // example global foo : function(string) : string
+        case TOKEN_GLOBAL:
+            // TOKEN_GLOBAL
+            scanner_destroy_token(&token);
+            status = scanner_get_token(&token);
+            if (status != SUCCESS) {
+                break;
+            }
+
+            // TOKEN_IDENTIFIER
+            if (token.type != TOKEN_STRING_LIT) {
+                break;
+            }
+            // TODO semantic check, add into symbol table ...
+            scanner_destroy_token(&token);
+            status = scanner_get_token(&token);
+            if (status != SUCCESS) {
+                break;
+            }
+
+            if (!eatToken(TOKEN_COLON)) {
+                break;
+            }
+            if (!eatToken(TOKEN_FUNCTION)) {
+                break;
+            }
+            if (!eatToken(TOKEN_PAR_L)) {
+                break;
+            }
+            if (!nt_fn_decl_params()) {
+                break;
+            }
+
+
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_fn_decl_params() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_INTEGER_KW:
+        case TOKEN_NUMBER_KW:
+        case TOKEN_STRING_KW:
+            scanner_destroy_token(&token);
+            status = scanner_get_token(&token);
+            if (status != SUCCESS) {
+                break;
+            }
+            // TODO multiple parameters
+            found = true;
+            break;
+
+        default:
+            found = true;
+            break;
+    }
+    return found;
+}
+
+bool nt_fn_def() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_FUNCTION:
+            // TODO
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+
 
 Status parser_init() {
     return SUCCESS;
 }
 
 Status parser_run() {
-    SyntaxStack stack;
-    syntaxstack_init(&stack);
-
-    // Push starting non-terminal, that represents the entire program
-    syntaxstack_push(&stack, NT_PROG);
-    // read the first token
-    Token token;
-    Status status = scanner_get_token(&token);
+    status = scanner_get_token(&token);
     if (status != SUCCESS) {
         return status;
     }
 
-    while (!syntaxstack_is_empty(&stack)) {
-        // while the top of the stack matches with the type of the token
-        // cancel both of them out and move onto the next pair
-        while (syntaxstack_top(&stack) == token.type) {
-            syntaxstack_pop(&stack);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                return status;
-            }
-        }
+    bool valid = nt_prog();
 
-        // when they do not match, try to apply a rule
-        status = apply_rule(&stack, token.type);
-        if (status != SUCCESS) {
-            return status;
+    if (status == SUCCESS) {
+        if (valid) {
+            return SUCCESS;
+        } else {
+            // TODO maybe print out some error message?
+            return ERR_SYNTAX;
         }
     }
 
-    syntaxstack_destroy(&stack);
     return SUCCESS;
 }
 

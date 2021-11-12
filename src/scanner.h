@@ -22,8 +22,6 @@ typedef enum {
     TOKEN_IDENTIFIER,
     TOKEN_EOF,
     TOKEN_EOL,
-    TOKEN_KEYWORD,
-    TOKEN_COMMENT,
 
     TOKEN_PLUS,
     TOKEN_MINUS,
@@ -32,10 +30,11 @@ typedef enum {
     TOKEN_MULTIPLY,
     TOKEN_EQUALS,
 
-    TOKEN_INT,
-    TOKEN_DOUBLE,
-    TOKEN_STRING,
-    TOKEN_EXP,
+    // literals
+    TOKEN_INTEGER_LIT,
+    TOKEN_DOUBLE_LIT,
+    TOKEN_STRING_LIT,
+    TOKEN_EXP_LIT, // TODO delete this, this is just a different notation of double
 
     TOKEN_LT,
     TOKEN_LEQ,
@@ -50,41 +49,32 @@ typedef enum {
     TOKEN_FUNCTION,
     TOKEN_GLOBAL,
     TOKEN_IF,
-    TOKEN_INTEGER,
+    TOKEN_INTEGER_KW,
     TOKEN_LOCAL,
     TOKEN_NIL,
-    TOKEN_NUMBER,
+    TOKEN_NUMBER_KW,
     TOKEN_REQUIRE,
     TOKEN_RETURN,
-    TOKEN_KEYWORD_STRING,
+    TOKEN_STRING_KW,
     TOKEN_THEN,
     TOKEN_WHILE,
 
     TOKEN_CONCATENATE,
     TOKEN_GET_LENGTH,
     TOKEN_ASSIGN,
-    // TODO zmenit
-    TOKEN_DVOJTECKAASI,
-    TOKEN_ERROR,
+    TOKEN_COLON,
+    TOKEN_COMMA,
+    TOKEN_PAR_L,
+    TOKEN_PAR_R,
 
-    // TODO add more types
-    NUM_TOKENS, // C dark magic, please keep this at the end
-    // non-terminals go here
-    NT_PROG,
-    NT_PROLOG,
-    NT_PROG_BODY,
-    NT_BODY,
-    NT_FN_DECL,
-    NT_FN_DEF,
-    NT_IF,
-    NT_WHILE,
+    TOKEN_ERROR, // TODO what is this, is it really needed?
 
-} SymbolType;
+} TokenType;
 
 
 typedef struct {
     char *str;
-    SymbolType type;
+    TokenType type;
     // Location of the token in the input file
     // these are just for debugging purposes
     unsigned lineNumber;
@@ -150,6 +140,8 @@ typedef enum {
 Status scanner_init(FILE *in);
 
 Status scanner_get_token(Token *pToken);
+
+void scanner_destroy_token(Token *pToken);
 
 Status scanner_destroy();
 

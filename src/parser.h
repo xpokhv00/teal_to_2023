@@ -15,28 +15,11 @@
 
 #include "common.h"
 #include "scanner.h"
-#include "syntaxstack.h"
+// #include "syntaxstack.h"
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-
-// one non-terminal can be rewritten to this many terminals or non-terminals
-// needed only for practical implementation of LL table
-#define MAX_RULE_LENGTH 10
-
-typedef struct {
-    SymbolType type;
-    bool empty;
-    SymbolType first[NUM_TOKENS];
-    SymbolType follow;
-} LL_line;
-
-typedef struct {
-    SymbolType from;
-    SymbolType to[MAX_RULE_LENGTH];
-} Rule;
-
 
 Status parser_init();
 

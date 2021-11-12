@@ -23,16 +23,16 @@
 typedef struct {
     int allocatedElements;
     int top;
-    SymbolType *data;
+    TokenType *data;
 } SyntaxStack;
 
 void syntaxstack_init(SyntaxStack* s);
 
-Status syntaxstack_push(SyntaxStack* s, SymbolType item);
+Status syntaxstack_push(SyntaxStack* s, TokenType item);
 
-SymbolType syntaxstack_top(SyntaxStack* s);
+TokenType syntaxstack_top(SyntaxStack* s);
 
-SymbolType syntaxstack_pop(SyntaxStack* s);
+TokenType syntaxstack_pop(SyntaxStack* s);
 
 bool syntaxstack_is_empty(SyntaxStack* s);
 

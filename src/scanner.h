@@ -34,7 +34,6 @@ typedef enum {
     TOKEN_INTEGER_LIT,
     TOKEN_DOUBLE_LIT,
     TOKEN_STRING_LIT,
-    TOKEN_EXP_LIT, // TODO delete this, this is just a different notation of double
 
     TOKEN_LT,
     TOKEN_LEQ,
@@ -110,7 +109,11 @@ typedef enum {
     SCANNER_DIVIDE,
     SCANNER_INT_DIVIDE,
     SCANNER_MULTIPLY,
+    SCANNER_COLON, // ":"
     SCANNER_ASSIGN,
+    SCANNER_COMMA,
+    SCANNER_PAR_L,
+    SCANNER_PAR_R,
 
     SCANNER_INT,
     SCANNER_NUMBER_POINT,

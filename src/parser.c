@@ -73,24 +73,14 @@ bool nt_prolog() {
     switch (token.type) {
         // pravidlo <prolog> -> TOKEN_REQUIRE TOKEN_STRING_LIT
         case TOKEN_REQUIRE:
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
+            GET_NEW_TOKEN();
             // the next token must be string literal "ifj21"
-            if (token.type != TOKEN_STRING_LIT) {
-                break;
-            }
+            ASSERT_TOKEN_TYPE(TOKEN_STRING_LIT);
             if (strcmp(token.str, "ifj21") != 0) {
                 status = ERR_SEMANTIC_OTHER;
                 break;
             }
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
+            GET_NEW_TOKEN();
 
             found = true;
             break;
@@ -105,12 +95,13 @@ bool nt_prog_body() {
     bool found = false;
 
     switch (token.type) {
-        // pravidlo <prog_body> -> <fn_decl> <prog_body>
         case TOKEN_GLOBAL:
+            // <prog_body> -> <fn_decl> <prog_body>
             found = nt_fn_decl() && nt_prog_body();
             break;
 
         case TOKEN_FUNCTION:
+            // <prog_body> -> <fn_def> <prog_body>
             found = nt_fn_def() && nt_prog_body();
             break;
 
@@ -131,49 +122,25 @@ bool nt_fn_decl() {
     switch (token.type) {
         // pravidlo <fn_decl> ->
         // TOKEN_GLOBAL TOKEN_IDENTIFIER TOKEN_COLON TOKEN_FUNCTION
-        // TOKEN_PAR_L <fn_decl_params> TOKEN_PAR_R TOKEN_COLON <type>
+        // TOKEN_PAR_L <fn_decl_params> TOKEN_PAR_R <fn_returns>
         // example global foo : function(string) : string
         case TOKEN_GLOBAL:
-            // TOKEN_GLOBAL
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
-
-            // TOKEN_IDENTIFIER
-            if (token.type != TOKEN_STRING_LIT) {
-                break;
-            }
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             // TODO semantic check, add into symbol table ...
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
-
-            if (!eatToken(TOKEN_COLON)) {
-                break;
-            }
-            if (!eatToken(TOKEN_FUNCTION)) {
-                break;
-            }
-            if (!eatToken(TOKEN_PAR_L)) {
-                break;
-            }
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_FUNCTION);
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            GET_NEW_TOKEN();
             if (!nt_fn_decl_params()) {
                 break;
             }
-            if (!eatToken(TOKEN_PAR_R)) {
-                break;
-            }
-            if (!eatToken(TOKEN_COLON)) {
-                break;
-            }
-
-            // read <type>
-            // this is the return of the function, do semantic checks with the symbol table
-            if (!nt_type()) {
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
+            GET_NEW_TOKEN();
+            if (!nt_fn_returns()) {
                 break;
             }
             // TODO semantic check with symbol table ...
@@ -195,11 +162,7 @@ bool nt_fn_decl_params() {
         case TOKEN_INTEGER_KW:
         case TOKEN_NUMBER_KW:
         case TOKEN_STRING_KW:
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
+            GET_NEW_TOKEN();
             found = nt_fn_decl_params_next();
             break;
 
@@ -218,11 +181,8 @@ bool nt_fn_decl_params_next() {
     switch (token.type) {
         case TOKEN_COMMA:
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
+            GET_NEW_TOKEN();
+
             if (!nt_type()) {
                 break;
             }
@@ -251,41 +211,25 @@ bool nt_fn_def() {
             // <fn_def> -> TOKEN_FUNCTION TOKEN_IDENTIFIER
             // TOKEN_PAR_L <fn_def_params> TOKEN_PAR_R
             // TOKEN_COLON <fn_returns> <fn_body>
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
-
-            // TOKEN_IDENTIFIER
-            if (token.type != TOKEN_STRING_LIT) {
-                break;
-            }
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             // TODO semantic check, add into symbol table ...
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
-
-            if (!eatToken(TOKEN_PAR_L)) {
-                break;
-            }
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            GET_NEW_TOKEN();
             if (!nt_fn_def_params()) {
                 break;
             }
             // TODO semantic check of params
-            if (!eatToken(TOKEN_PAR_R)) {
-                break;
-            }
-            if (!eatToken(TOKEN_COLON)) {
-                break;
-            }
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            GET_NEW_TOKEN();
             if (!nt_fn_returns()) {
                 break;
             }
             // TODO semantic check of return type
-            if (!nt_type()) {
+            if (!nt_type()) { // TODO continue here, body is missing
                 break;
             }
 
@@ -423,11 +367,7 @@ bool nt_type() {
         case TOKEN_STRING_KW:
             // <type> -> TOKEN_STRING_KW
             // TODO some semantic checks?
-            scanner_destroy_token(&token);
-            status = scanner_get_token(&token);
-            if (status != SUCCESS) {
-                break;
-            }
+            GET_NEW_TOKEN();
             found = true;
 
         default:

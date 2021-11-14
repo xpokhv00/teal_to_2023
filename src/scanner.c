@@ -117,31 +117,28 @@ Status scanner_init(FILE *in) {
 
 
 Status scanner_get_token(Token *pToken) {
-
     // realloc doubles this size
     unsigned alloc_size = 500;
     unsigned str_index = 0;
 
-   // pToken = malloc(sizeof(Token));
-
-   // pToken->str = malloc(sizeof(char) * alloc_size);
-    //if (pToken == NULL || pToken->str == NULL) {
-      //  return ERR_INTERNAL;
-    //}
+    pToken->str = malloc(sizeof(char) * alloc_size);
+    if (pToken->str == NULL) {
+        return ERR_INTERNAL;
+    }
 
     memset(pToken->str, 0, sizeof(char)*(alloc_size-1));
     if (inFile == NULL) {
         return ERR_INTERNAL;
     }
 
-    int state = SCANNER_START;
+    ScannerState state = SCANNER_START;
     int input;
 
     while (true) {
         input = getc(inFile);
         if (strlen(pToken->str) > alloc_size - 10) {
             str_realloc(pToken);
-            printf("sheesh");
+            //printf("sheesh"); never use printf, it might mess up the output program
         }
         if (pToken->str == NULL) {
             return ERR_INTERNAL;
@@ -239,21 +236,18 @@ Status scanner_get_token(Token *pToken) {
                 pToken->characterNumber = characterCount;
                 pToken->lineNumber = lineCount;
                 ungetc(input, inFile);
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_PAR_R:
                 pToken->str[0] = ')';
                 pToken->characterNumber = characterCount;
                 pToken->lineNumber = lineCount;
                 ungetc(input, inFile);
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_COMMA:
                 ungetc(input, inFile);
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_STRING_START:
                 if (input != '"' && input > 31) {
                     pToken->str[str_index++] = input;
@@ -284,8 +278,7 @@ Status scanner_get_token(Token *pToken) {
                 pToken->lineNumber = lineCount;
                 str_index = 0;
                 ungetc(input, inFile);
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_ESC_SEQ:
                 if (input == '0') {
                     pToken->str[str_index++] = input;
@@ -374,8 +367,7 @@ Status scanner_get_token(Token *pToken) {
                     pToken->str[0] = '-';
                     pToken->lineNumber = lineCount;
                     pToken->characterNumber = characterCount;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
                 characterCount++;
                 break;
@@ -384,8 +376,7 @@ Status scanner_get_token(Token *pToken) {
                 pToken->str[0] = '+';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_DIVIDE:
                 if (input == '/') {
                     pToken->str[0] = '/';
@@ -396,8 +387,7 @@ Status scanner_get_token(Token *pToken) {
                     pToken->str[0] = '/';
                     pToken->lineNumber = lineCount;
                     pToken->characterNumber = characterCount;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
             case SCANNER_INT_DIVIDE:
                 ungetc(input, inFile);
@@ -405,15 +395,13 @@ Status scanner_get_token(Token *pToken) {
                 pToken->type = TOKEN_INT_DIVIDE;
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = ++characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_MULTIPLY:
                 ungetc(input, inFile);
                 pToken->str[0] = '*';
                 pToken->characterNumber = characterCount;
                 pToken->lineNumber = lineCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_DOT:
                 if (input == '.') {
                     pToken->str[0] = '.';
@@ -430,15 +418,13 @@ Status scanner_get_token(Token *pToken) {
                 pToken->str[1] = '.';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_COLON:
                 ungetc(input, inFile);
                 pToken->str[0] = ':';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
 
             case SCANNER_ONE_EQUALS:
                 if (input == '=') {
@@ -458,8 +444,7 @@ Status scanner_get_token(Token *pToken) {
                 pToken->str[1] = '=';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
 
             case SCANNER_LT:
                 if (input == '=') {
@@ -471,8 +456,7 @@ Status scanner_get_token(Token *pToken) {
                     pToken->str[0] = '<';
                     pToken->lineNumber = lineCount;
                     pToken->characterNumber = characterCount;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
             case SCANNER_GT:
                 if (input == '=') {
@@ -484,8 +468,7 @@ Status scanner_get_token(Token *pToken) {
                     pToken->str[0] = '>';
                     pToken->lineNumber = lineCount;
                     pToken->characterNumber = characterCount;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
             case SCANNER_LEQ:
                 ungetc(input, inFile);
@@ -493,16 +476,14 @@ Status scanner_get_token(Token *pToken) {
                 pToken->type = TOKEN_LEQ;
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_GTE:
                 ungetc(input, inFile);
                 pToken->str[1] = '=';
                 pToken->type = TOKEN_GEQ;
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
             case SCANNER_TILDA:
                 if (input == '=') {
                     pToken->str[0] = '~';
@@ -517,16 +498,14 @@ Status scanner_get_token(Token *pToken) {
                 pToken->str[1] = '=';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
 
             case SCANNER_GET_LENGTH:
                 ungetc(input, inFile);
                 pToken->str[1] = '#';
                 pToken->lineNumber = lineCount;
                 pToken->characterNumber = characterCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
 
             case SCANNER_COMMENT_START:
                 if (input == '\n') {
@@ -582,8 +561,7 @@ Status scanner_get_token(Token *pToken) {
                     pToken->characterNumber = ++characterCount;
                     pToken->lineNumber = lineCount;
                     pToken->type = TOKEN_INTEGER_LIT;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
                 pToken->str[str_index++] = input;
                 characterCount++;
@@ -616,8 +594,7 @@ Status scanner_get_token(Token *pToken) {
                     pToken->characterNumber = ++characterCount;
                     pToken->lineNumber = lineCount;
                     pToken->type = TOKEN_DOUBLE_LIT;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
                 break;
             case SCANNER_EXP_BASE:
@@ -652,21 +629,19 @@ Status scanner_get_token(Token *pToken) {
                     pToken->characterNumber = ++characterCount;
                     pToken->lineNumber = lineCount;
                     pToken->type = TOKEN_DOUBLE_LIT;
-                    state = SUCCESS;
-                    return state;
+                    return SUCCESS;
                 }
                 break;
 
             case SCANNER_IDENTIFIER:
                 ungetc(input, inFile);
                 characterCount += handleIdentifier(pToken, input);
-                printf("%s\n", pToken->str);
+                //printf("%s\n", pToken->str);
                 pToken->lineNumber = lineCount;
-                state = SUCCESS;
-                return state;
+                return SUCCESS;
 
             case SCANNER_EOF:
-                return state;
+                return SUCCESS;
 
 
             default:
@@ -675,8 +650,7 @@ Status scanner_get_token(Token *pToken) {
                 pToken->lineNumber = lineCount;
                 str_index = 0;
                 ungetc(input, inFile);
-                state = ERR_LEXICAL;
-                return state;
+                return ERR_LEXICAL;
         }
     }
 }

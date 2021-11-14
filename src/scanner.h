@@ -18,10 +18,8 @@
 #include <stdbool.h>
 
 typedef enum {
-    NONE = 0, // This is needed for the implementation of LL-table
     TOKEN_IDENTIFIER,
     TOKEN_EOF,
-    TOKEN_EOL,
 
     TOKEN_PLUS,
     TOKEN_MINUS,

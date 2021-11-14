@@ -42,7 +42,7 @@ void test_parser() {
 int main() {
     scanner_init(stdin);
 
-    test_scanner();
-
+    //test_scanner();
+    parser_run();
     scanner_destroy();
 }

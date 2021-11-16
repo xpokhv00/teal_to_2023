@@ -144,6 +144,8 @@ Status scanner_get_token(Token *pToken) {
             return ERR_INTERNAL;
         }
 
+        // pToken->str[index] = input;
+
         switch (state) {
             case SCANNER_START:
                 if (input == '\n') {

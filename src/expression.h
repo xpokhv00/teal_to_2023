@@ -33,9 +33,9 @@ typedef struct {
 } SymStack;
 
 void symstack_init(SymStack* s);
-Status symstack_push(SymStack* s, TokenType item);
-TokenType symstack_top(SymStack* s);
-TokenType symstack_pop(SymStack* s);
+Status symstack_push(SymStack* s, SymbolType item);
+SymbolType symstack_top(SymStack* s);
+SymbolType symstack_pop(SymStack* s);
 bool symstack_is_empty(SymStack* s);
 void symstack_destroy(SymStack* s);
 

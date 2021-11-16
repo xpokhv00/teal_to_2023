@@ -42,14 +42,14 @@ SymbolType symstack_top(SymStack* s) {
     if (!symstack_is_empty(s)) {
         return s->data[s->top];
     }
-    return NONE;
+    //return NONE;
 }
 
 SymbolType symstack_pop(SymStack* s) {
     if (!symstack_is_empty(s)) {
         return s->data[s->top--];
     }
-    return NONE;
+    //return NONE;
 }
 
 bool symstack_is_empty(SymStack* s) {

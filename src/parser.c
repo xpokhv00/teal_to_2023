@@ -16,21 +16,6 @@ static Token token;
 // if anything fails, it will be stored here
 static Status status;
 
-// gets the token of the required type
-// and gets a new one from the scanner
-// returns false, if type does not match
-bool eatToken(TokenType type) {
-    if (token.type != type) {
-        return false;
-    }
-    scanner_destroy_token(&token);
-    status = scanner_get_token(&token);
-    if (status != SUCCESS) {
-        // this might not be the best practise
-        return false;
-    }
-    return true;
-}
 
 #define GET_NEW_TOKEN() scanner_destroy_token(&token); \
 status = scanner_get_token(&token); \

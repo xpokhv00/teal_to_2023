@@ -66,6 +66,7 @@ typedef enum {
 
     TOKEN_ERROR, // TODO what is this, is it really needed?
 
+    NUM_TOKENS, // This must be the last item
 } TokenType;
 
 

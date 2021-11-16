@@ -18,6 +18,7 @@
 #include <stdbool.h>
 
 typedef enum {
+    NONE,
     TOKEN_IDENTIFIER,
     TOKEN_EOF,
 

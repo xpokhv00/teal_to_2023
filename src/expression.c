@@ -42,14 +42,14 @@ SymbolType symstack_top(SymStack* s) {
     if (!symstack_is_empty(s)) {
         return s->data[s->top];
     }
-    //return NONE;
+    return (SymbolType)NONE;
 }
 
 SymbolType symstack_pop(SymStack* s) {
     if (!symstack_is_empty(s)) {
         return s->data[s->top--];
     }
-    //return NONE;
+    return (SymbolType)NONE;
 }
 
 bool symstack_is_empty(SymStack* s) {
@@ -65,5 +65,10 @@ void symstack_destroy(SymStack* s) {
 
 bool nt_expr() {
     // TODO this is where you begin
+    SymStack s;
+    symstack_init(&s);
+    symstack_push(&s, (SymbolType)TOKEN_IDENTIFIER);
+    symstack_pop(&s);
+    symstack_destroy(&s);
     return true;
 }

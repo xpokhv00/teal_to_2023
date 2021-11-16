@@ -15,6 +15,7 @@
 
 #include "common.h"
 #include "scanner.h"
+#include "expression.h"
 // #include "syntaxstack.h"
 
 #include <stdio.h>

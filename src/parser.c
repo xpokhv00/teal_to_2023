@@ -504,17 +504,13 @@ Status parser_run() {
 
     bool valid = nt_prog();
 
-    if (status == SUCCESS) {
-        if (valid) {
-            return SUCCESS;
-        } else {
-            char *fstring = "Syntax error on line %u:%u:\nUnexpected token `%s`\n\n";
-            fprintf(stderr, fstring, token.lineNumber, token.characterNumber, token.str);
-            return ERR_SYNTAX;
-        }
+    if (status == SUCCESS && !valid) {
+        char *fstring = "Syntax error on line %u:%u:\nUnexpected token `%s`\n\n";
+        fprintf(stderr, fstring, token.lineNumber, token.characterNumber, token.str);
+        return ERR_SYNTAX;
     }
 
-    return SUCCESS;
+    return status;
 }
 
 Status parser_destroy() {

@@ -47,8 +47,6 @@ Status scanner_get_token(Token *pToken) {
     unsigned alloc_size = 500;
     unsigned str_index = 0;
 
-   pToken = malloc(sizeof(Token));
-
    pToken->str = malloc(sizeof(char) * alloc_size);
    if (pToken == NULL || pToken->str == NULL) {
       return ERR_INTERNAL;

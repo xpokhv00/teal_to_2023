@@ -43,6 +43,24 @@ int main() {
     scanner_init(stdin);
 
     //test_scanner();
-    parser_run();
+    Status s = parser_run();
+    if (s == SUCCESS) {
+        fprintf(stderr, "Compilation was successful!\n");
+    } else {
+        char *errorStrings[] = {
+                [SUCCESS] = "", // never happens
+                [ERR_LEXICAL] = "Lexical",
+                [ERR_SYNTAX] = "Syntax",
+                [ERR_SEMANTIC_DEF] = "Semantic",
+                [ERR_SEMANTIC_ASSIGN] = "Semantic",
+                [ERR_SEMANTIC_FUNC] = "Semantic",
+                [ERR_SEMANTIC_EXPR] = "Semantic",
+                [ERR_SEMANTIC_OTHER] = "Semantic",
+                [ERR_RUNTIME_NIL] = "Runtime",
+                [ERR_RUNTIME_DIV_ZERO] = "Runtime",
+                [ERR_INTERNAL] = "Internal",
+        };
+        fprintf(stderr, "Compilation failed with %s error\n", errorStrings[s]);
+    }
     scanner_destroy();
 }

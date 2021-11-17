@@ -195,7 +195,7 @@ bool nt_fn_def() {
         case TOKEN_FUNCTION:
             // <fn_def> -> TOKEN_FUNCTION TOKEN_IDENTIFIER
             // TOKEN_PAR_L <fn_def_params> TOKEN_PAR_R
-            // TOKEN_COLON <fn_returns> <fn_body>
+            // <fn_returns> <fn_body>
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             // TODO semantic check, add into symbol table ...
@@ -208,15 +208,11 @@ bool nt_fn_def() {
             // TODO semantic check of params
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_COLON);
-            GET_NEW_TOKEN();
             if (!nt_fn_returns()) {
                 break;
             }
-            // TODO semantic check of return type
-            if (!nt_type()) { // TODO continue here, body is missing
-                break;
-            }
+
+            // TODO continue here, body is missing
 
             found = true;
             break;
@@ -262,7 +258,7 @@ bool nt_fn_def_params_next() {
 
     switch (token.type) {
         case TOKEN_COMMA:
-            // <fn_decl_params> -> TOKEN_COMMA TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_decl_params_next>
+            // <fn_def_params_next> -> TOKEN_COMMA TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             GET_NEW_TOKEN();
@@ -272,16 +268,16 @@ bool nt_fn_def_params_next() {
                 break;
             }
             // TODO semantic check for type
-            GET_NEW_TOKEN();
+
             // read another comma and parameter or eps
-            if (!nt_fn_decl_params_next()) {
+            if (!nt_fn_def_params_next()) {
                 break;
             }
             found = true;
             break;
 
         default:
-            // <fn_decl_params> -> eps
+            // <fn_def_params> -> eps
             // there don't have to be any parameters
             found = true;
             break;

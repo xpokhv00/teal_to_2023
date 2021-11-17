@@ -96,7 +96,7 @@ int handleIdentifier(Token *pToken, char input) {
         pToken->type = TOKEN_RETURN;
         return i;
     } else if (!strcmp(pToken->str, "string")) {
-        pToken->type = TOKEN_STRING_LIT;
+        pToken->type = TOKEN_STRING_KW;
         return i;
     } else if (!strcmp(pToken->str, "then")) {
         pToken->type = TOKEN_THEN;

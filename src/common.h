@@ -12,6 +12,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdbool.h>
+
 typedef enum {
     SUCCESS = 0,
     ERR_LEXICAL = 1,

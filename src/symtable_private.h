@@ -21,21 +21,18 @@
 
 // Encapsulated header file
 
-typedef unsigned int index_t;   // Type of the index
-
 // Full structure of an item
-struct htab_item {
-    htab_pair_t htab_pair;
-    struct htab_item *next;
+struct symtabitem {
+    SymTabPair symtab_pair;
+    struct symtabitem *next;
 };
 
-typedef struct htab_item htab_item_t;
+typedef struct symtabitem SymTabItem;
 
 // Hash table full structure
-struct htab {
-    htab_item_t **htab_items;
-    index_t arr_size;
-    index_t size;
+struct symtab {
+    SymTabItem **symtab_items;
+    unsigned int arr_size;
 };
 
 #endif // SYMTABLE_PRIVATE_H

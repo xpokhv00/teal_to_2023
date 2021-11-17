@@ -13,136 +13,51 @@
 
  #include "symtable_private.h"
 
- // Constructor, creates an empty table, numb is size of the table
- htab_t *htab_init(size_t numb)
- {
-     htab_t *h_table = malloc(sizeof(htab_t));
+ // Constructor, creates an empty table
+ SymTab *symtab_init() {
+     SymTab *table = malloc(sizeof(SymTab));
 
-     if (h_table == NULL)
+     if (table == NULL)
      {
          // If allocation fails
          return NULL;
      }
+
      else
      {
-         h_table->arr_size = numb;
-         h_table->size = 0;
-         h_table->htab_items = malloc(sizeof(htab_item_t *) * numb);
+         table->arr_size = SYMTAB_SIZE;
+         table->symtab_items = malloc(sizeof(SymTabItem *) * SYMTAB_SIZE);
 
-         // Set all the fields of an array to null
-         for(size_t i = 0; i < numb; i++)
+         // Set the whole array to null
+         for(size_t i = 0; i < SYMTAB_SIZE; i++)
          {
-             h_table->htab_items[i] = NULL;
+             table->symtab_items[i] = NULL;
          }
      }
 
-     return h_table;
- }
-
- // Returns size of hash table array
- size_t htab_bucket_count(const htab_t *t)
- {
-     return t->arr_size;
- }
-
- // Deletes all elements of hash table, an empty allocated table is left behind
- void htab_clear(htab_t *t)
- {
-     htab_item_t *temp_element;
-     htab_item_t *current_element;
-     t->size = 0;
-
-     // Delete items for every item in array
-     for (index_t i = 0; i < t->arr_size; i++)
-     {
-         // Delete the first item of a list
-         temp_element = t->htab_items[i];
-         t->htab_items[i]= NULL;
-
-         // Free every item of a following list, its key
-         while (temp_element != NULL)
-         {
-             current_element = temp_element->next;
-             free((char *)temp_element->htab_pair.key);
-             free(temp_element);
-             temp_element = current_element;
-         }
-     }
-     return;
- }
-
- // Finds an element of hash table, if found deletes it, returns true
- bool htab_erase(htab_t *t, htab_key_t key)
- {
-     index_t element_index = htab_hash_function(key) % t->arr_size;
-     htab_item_t **current_element = &t->htab_items[element_index];
-     htab_item_t *deleted_element;
-
-     while (*current_element != NULL)
-
-     {
-         if ((strcmp((*current_element)->htab_pair.key, key)) == 0)
-         {
-             deleted_element = *current_element;
-             (*current_element) = (*current_element)->next;
-             free((char *)deleted_element->htab_pair.key);
-             free(deleted_element);
-             t->size--;
-             return true;
-         }
-
-         // Go to the next item of a list
-         current_element = &(*current_element)->next;
-     }
-
-     // If not found return false
-     return false;
+     return table;
  }
 
  // Finds an element in a hash table, returns pointer to its pair
- htab_pair_t *htab_find(htab_t *t, htab_key_t key)
- {
-     index_t element_index = htab_hash_function(key) % t->arr_size;
-     htab_item_t *temp = t->htab_items[element_index];
-     htab_pair_t *ret;
+ SymTabPair *symtab_find(SymTab *table, SymTabKey key) {
+     unsigned key_hash = symtab_hash_function(key) % table->arr_size;
+     SymTabItem *temp = table->symtab_items[key_hash];
 
      while (temp)
      {
-         if (!(strcmp(temp->htab_pair.key, key)))
+         if ((strcmp(temp->symtab_pair.key, key)) == 0)
          {
-             ret = &(temp->htab_pair);
-             return ret;
+             return &(temp->symtab_pair);
          }
          temp = temp->next;
      }
 
-     // If not found return null
      return NULL;
  }
 
- // Cycles through all the elements of a hash table and calls a function
- void htab_for_each(const htab_t *t, void (*f)(htab_pair_t *data))
- {
-     htab_item_t *temp;
-     for (index_t i = 0; i < t->arr_size; i++)
-     {
-         temp = t->htab_items[i];
-
-         while (temp != NULL)
-         {
-             f(&temp->htab_pair);
-             temp = temp->next;
-         }
-         free(temp);
-     }
-
-     return;
- }
-
  // Hash function of a hash table
- size_t htab_hash_function(htab_key_t str)
- {
-     index_t h = 0; // 32 bits
+ size_t symtab_hash_function(SymTabKey str) {
+     unsigned h = 0; // 32 bits
      const unsigned char *p;
 
      for(p = (const unsigned char*)str; *p != '\0'; p++)
@@ -154,29 +69,30 @@
  }
 
  // Searches for an item, creates if not found
- htab_pair_t *htab_lookup_add(htab_t *t, htab_key_t key)
- {
-     index_t hash_key = htab_hash_function(key) % t->arr_size;
-     htab_item_t **element = &(t->htab_items[hash_key]);
+ SymTabPair *symtab_insert(SymTab *table, SymTabKey key, SymTabValue value) {
+     unsigned key_hash = symtab_hash_function(key) % table->arr_size;
+     SymTabItem **element = &(table->symtab_items[key_hash]);
 
      // Find last item of the list
-     while (*element != NULL)
+     while (*element)
      {
-         if (strcmp((*element)->htab_pair.key, key) == 0)
+         if (strcmp((*element)->symtab_pair.key, key) == 0)
          {
-             return (&(*element)->htab_pair);
+             break;
          }
 
          // Move to next item of the list
          element = &(*element)->next;
      }
 
-     if ((*element = malloc(sizeof(htab_item_t))) == NULL)
+     *element = malloc(sizeof(SymTabItem));
+     if (*element == NULL)
      {
          return NULL;
      }
 
-     if (((*element)->htab_pair.key = malloc(strlen(key) + 1))  == NULL)
+     (*element)->symtab_pair.key = malloc(strlen(key) + 1);
+     if ((*element)->symtab_pair.key == NULL)
      {
          //allocation of item failed
          free(*element);
@@ -184,64 +100,41 @@
      }
 
      // Initialize new item
-     strcpy((char *)(*element)->htab_pair.key , key);
-     (*element)->htab_pair.value = 0;
+     strcpy((char *)(*element)->symtab_pair.key , key);
+     (*element)->symtab_pair.value = value;
      (*element)->next = NULL;
 
-     t->size++;
-
      //returning new item pair
-     return (&(*element)->htab_pair);
+     return (&(*element)->symtab_pair);
  }
 
- // Constructor, creates and fills table with data from an existing table
- htab_t *htab_move(size_t newnumb, htab_t *t2)
- {
-     htab_t *new_table;
+// Deletes all elements of hash table, an empty allocated table is left behind
+void symtab_clear(SymTab *table) {
+    SymTabItem *temp_element;
 
-     if ((new_table = htab_init(newnumb)) == NULL)
-     {
-         return NULL;
-     }
 
-     for (size_t i = 0; i < t2->arr_size; i++)
-     {
-         htab_item_t *temp_item = t2->htab_items[i];
-         htab_pair_t *temp_pair;
+    // Delete items for every item in array
+    for (unsigned i = 0; i < table->arr_size; i++)
+    {
+        // Delete the first item of a list
+        temp_element = table->symtab_items[i];
+        table->symtab_items[i]= NULL;
 
-         while (temp_item)
-         {
-             temp_pair = htab_lookup_add(new_table, temp_item->htab_pair.key);
-
-             if (temp_pair == NULL)
-             {
-                 return NULL;
-             }
-
-             temp_pair->value = temp_item->htab_pair.value;
-             temp_item = temp_item->next;
-         }
-     }
-
-     // Delete content of the old table
-     htab_clear(t2);
-
-     return new_table;
- }
-
- // Returns number of elements of hash table
- size_t htab_size(const htab_t *t)
- {
-     return t->size;
- }
+        // Free every item of a following list, its key
+        while (temp_element != NULL)
+        {
+            SymTabItem *current_element = temp_element->next;
+            free((char *)temp_element->symtab_pair.key);
+            free(temp_element);
+            temp_element = current_element;
+        }
+    }
+}
 
  // Destructor of a hash table
- void htab_free(htab_t *t)
- {
-     htab_clear(t);
-     free(t->htab_items);
-     t->arr_size = 0;
-     t->size = 0;
-     free(t);
-     return;
+ void symtab_destroy(SymTab *table) {
+     symtab_clear(table);
+     free(table->symtab_items);
+     table->arr_size = 0;
+     free(table);
  }

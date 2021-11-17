@@ -26,15 +26,23 @@ if (status != SUCCESS) { break; }
 bool nt_prog();
 bool nt_prolog();
 bool nt_prog_body();
+
 bool nt_fn_decl();
 bool nt_fn_decl_params();
 bool nt_fn_decl_params_next();
+
 bool nt_fn_def();
 bool nt_fn_def_params();
 bool nt_fn_def_params_next();
 bool nt_fn_returns();
 bool nt_fn_returns_next();
+bool nt_fn_body();
+
+bool nt_fn_call();
+bool nt_fn_call_params();
+bool nt_fn_call_params_next();
 bool nt_type();
+
 
 
 bool nt_prog() {
@@ -90,8 +98,13 @@ bool nt_prog_body() {
             found = nt_fn_def() && nt_prog_body();
             break;
 
-        // pravidlo <prog_body> -> eps
+        case TOKEN_IDENTIFIER:
+            // <prog_body> -> <fn_call> <prog_body>
+            found = nt_fn_call() && nt_prog_body();
+            break;
+
         case TOKEN_EOF:
+            // pravidlo <prog_body> -> eps
             found = true;
             break;
 
@@ -336,17 +349,137 @@ bool nt_fn_returns_next() {
     return found;
 }
 
+bool nt_fn_body() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_LOCAL:
+            // variable declaration
+            //TODO
+            break;
+
+        case TOKEN_IDENTIFIER:
+            // <fn_body> -> TOKEN_IDENTIFIER TOKEN_ASSIGN <expr> <fn_body>
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
+            GET_NEW_TOKEN();
+            if (!nt_expr()) {
+                break;
+            }
+            found = true;
+            break;
+
+        case TOKEN_RETURN:
+            // TODO
+            break;
+
+        case TOKEN_END:
+            GET_NEW_TOKEN();
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+
+bool nt_fn_call() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_IDENTIFIER:
+            // <fn_call> -> TOKEN_IDENTIFIER TOKEN_PAR_L <fn_call_params> TOKEN_PAR_R
+            // TODO symtable lookup
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            GET_NEW_TOKEN();
+            if (!nt_fn_call_params()) {
+                break;
+            }
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
+            GET_NEW_TOKEN()
+            found = true;
+            break;
+
+
+        default:
+            // <fn_def_params> -> eps
+            // there don't have to be any parameters
+            found = true;
+            break;
+    }
+    return found;
+}
+
+bool nt_fn_call_params() {
+    bool found = false;
+
+    switch (token.type) {
+        // <nt_fn_call_params> -> TOKEN_IDENTIFIER <fn_call_params_next>
+        case TOKEN_IDENTIFIER: // This is not needed - only inside function body
+        case TOKEN_INTEGER_LIT:
+        case TOKEN_DOUBLE_LIT:
+        case TOKEN_STRING_LIT:
+        case TOKEN_NIL:
+            // TODO semantic
+            GET_NEW_TOKEN();
+            found = nt_fn_call_params_next();
+            break;
+
+        default:
+            // <fn_decl_params> -> eps
+            // there don't have to be any parameters
+            found = true;
+            break;
+    }
+    return found;
+}
+
+bool nt_fn_call_params_next() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_COMMA:
+            // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
+            GET_NEW_TOKEN();
+
+            if (token.type == TOKEN_IDENTIFIER) {
+                // TODO semantic checks
+            } else {
+                if (token.type == TOKEN_INTEGER_LIT
+                || token.type == TOKEN_DOUBLE_LIT
+                || token.type == TOKEN_STRING_LIT
+                || token.type == TOKEN_NIL){
+                    // check type
+                } else {
+                    // wrong token
+                    break;
+                }
+            }
+            GET_NEW_TOKEN();
+            // read another comma and parameter or eps
+            found = nt_fn_decl_params_next();
+            break;
+
+        default:
+            // <fn_decl_params> -> eps
+            // there don't have to be any parameters
+            found = true;
+            break;
+    }
+    return found;
+}
+
 bool nt_type() {
     bool found = false;
 
     switch (token.type) {
-
         case TOKEN_INTEGER_KW:
-            // <type> -> TOKEN_INTEGER_KW
         case TOKEN_NUMBER_KW:
-            // <type> -> TOKEN_NUMBER_KW
         case TOKEN_STRING_KW:
-            // <type> -> TOKEN_STRING_KW
+        case TOKEN_NIL:
             // TODO some semantic checks?
             GET_NEW_TOKEN();
             found = true;

@@ -20,4 +20,4 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
 .PHONY: clean
 
 clean:
-	rm -r $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)

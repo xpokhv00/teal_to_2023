@@ -69,7 +69,7 @@ bool nt_prolog() {
             GET_NEW_TOKEN();
             // the next token must be string literal "ifj21"
             ASSERT_TOKEN_TYPE(TOKEN_STRING_LIT);
-            if (strcmp(token.str, "ifj21") != 0) {
+            if (strcmp(token.str, "\"ifj21\"") != 0) {
                 status = ERR_SEMANTIC_OTHER;
                 break;
             }

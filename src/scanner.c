@@ -14,7 +14,7 @@
 #include <malloc.h>
 #include "scanner.h"
 
-#define ALLOC_SIZE 256
+#define ALLOC_SIZE 64
 
 // The file, that is being read
 static FILE *inFile;
@@ -36,15 +36,12 @@ Status scanner_init(FILE *in) {
 
 Status scanner_get_token(Token *pToken) {
     unsigned str_index = 0;
-
-    pToken->str = malloc(ALLOC_SIZE);
-    if (pToken->str == NULL) {
-        return ERR_INTERNAL;
-    }
+    unsigned allocated_length = 0;
 
     ScannerState state = SCANNER_START;
     int input;
 
+    pToken->str = NULL;
     pToken->characterNumber = characterCount;
     pToken->lineNumber = lineCount;
 
@@ -510,9 +507,9 @@ Status scanner_get_token(Token *pToken) {
             default:
                 return ERR_LEXICAL;
         }
-
-        if (str_index == (ALLOC_SIZE - 1) % ALLOC_SIZE) {
-            char *tmp = realloc(pToken->str, str_index + ALLOC_SIZE + 1);
+        if (str_index + 2 >= allocated_length) {
+            allocated_length += ALLOC_SIZE;
+            char *tmp = realloc(pToken->str, allocated_length);
             if (tmp == NULL) {
                 return ERR_INTERNAL;
             }

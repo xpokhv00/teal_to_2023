@@ -21,16 +21,19 @@ static FILE *inFile;
 
 // Count lines from the start of file and store it in tokens
 // this is for easier debugging
-static unsigned lineCount = 1;
+static unsigned lineCount;
 // characters form the start of the line
-static unsigned characterCount = 0;
+static unsigned characterCount;
 
 // if a letter is read after the token has ended, it is kept here
 // until the next reading
-static int nextLetter = EOF;
+static int nextLetter;
 
 Status scanner_init(FILE *in) {
     inFile = in;
+    lineCount = 1;
+    characterCount = 1;
+    nextLetter = EOF;
     return SUCCESS;
 }
 
@@ -53,7 +56,7 @@ Status scanner_get_token(Token *pToken) {
             input = getc(inFile);
             characterCount++;
             if (input == '\n') {
-                characterCount = 0;
+                characterCount = 1;
                 lineCount++;
             }
         }

@@ -29,6 +29,10 @@ static unsigned characterCount;
 // until the next reading
 static int nextLetter;
 
+#define SCAN_END() nextLetter = input; \
+    pToken->str[str_index] = '\0'; \
+    return SUCCESS;
+
 Status scanner_init(FILE *in) {
     inFile = in;
     lineCount = 1;
@@ -141,12 +145,15 @@ Status scanner_get_token(Token *pToken) {
                 }
                 break;
 
+            case SCANNER_CONCATENATE:
+            case SCANNER_COLON:
+            case SCANNER_NEQ:
+            case SCANNER_GET_LENGTH:
+            case SCANNER_EOF:
             case SCANNER_PAR_L:
             case SCANNER_PAR_R:
             case SCANNER_COMMA:
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
+                SCAN_END();
 
             case SCANNER_STRING_START:
                 if (input == '"') {
@@ -170,9 +177,7 @@ Status scanner_get_token(Token *pToken) {
 
             case SCANNER_STRING_FINAL:
                 pToken->type = TOKEN_STRING_LIT;
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
+                SCAN_END();
 
             case SCANNER_ESC_SEQ:
                 if (input == '0') {
@@ -245,34 +250,25 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_COMMENT_START;
                     str_index = 0;
                 } else {
-                    nextLetter = input;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
                 break;
                 
             case SCANNER_PLUS:
-                nextLetter = input;
-                return SUCCESS;
+                SCAN_END();
             case SCANNER_DIVIDE:
                 if (input == '/') {
                     state = SCANNER_INT_DIVIDE;
                     break;
                 } else {
-                    nextLetter = input;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
             case SCANNER_INT_DIVIDE:
-                nextLetter = input;
                 pToken->type = TOKEN_INT_DIVIDE;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
+                SCAN_END();
                 
             case SCANNER_MULTIPLY:
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
+                SCAN_END();
                 
             case SCANNER_DOT:
                 if (input == '.') {
@@ -282,15 +278,6 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
-            case SCANNER_CONCATENATE:
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
-                
-            case SCANNER_COLON:
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
 
             case SCANNER_ONE_EQUALS:
                 if (input == '=') {
@@ -298,14 +285,12 @@ Status scanner_get_token(Token *pToken) {
                     pToken->type = TOKEN_EQUALS;
                     
                 } else {
-                    state = SCANNER_ASSIGN;
                     pToken->type = TOKEN_ASSIGN;
-                    nextLetter = input;
+                    SCAN_END();
                 }
                 break;
             case SCANNER_EQ:
-                nextLetter = input;
-                return SUCCESS;
+                SCAN_END();
 
             case SCANNER_LT:
                 if (input == '=') {
@@ -313,9 +298,7 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_LEQ;
                     break;
                 } else {
-                    nextLetter = input;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
             case SCANNER_GT:
                 if (input == '=') {
@@ -323,20 +306,14 @@ Status scanner_get_token(Token *pToken) {
                     
                     break;
                 } else {
-                    nextLetter = input;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
             case SCANNER_LEQ:
-                nextLetter = input;
                 pToken->type = TOKEN_LEQ;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
+                SCAN_END();
             case SCANNER_GTE:
-                nextLetter = input;
                 pToken->type = TOKEN_GEQ;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
+                SCAN_END();
             case SCANNER_TILDA:
                 if (input == '=') {
                     pToken->type = TOKEN_NEQ;
@@ -345,15 +322,6 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
-            case SCANNER_NEQ:
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
-
-            case SCANNER_GET_LENGTH:
-                nextLetter = input;
-                pToken->str[str_index] = '\0';
-                return SUCCESS;
 
             case SCANNER_COMMENT_START:
                 if (input == '\n') {
@@ -399,22 +367,17 @@ Status scanner_get_token(Token *pToken) {
                 } else if (input == '.') {
                     state = SCANNER_NUMBER_POINT;
                 } else {
-                    nextLetter = input;
-                    
                     pToken->type = TOKEN_INTEGER_LIT;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
                 
                 break;
 
             case SCANNER_NUMBER_POINT:
                 if (input == 'e' || input == 'E') {
-                    
                     state = SCANNER_EXP_BASE;
                 } else if (input >= '0' && input <= '9') {
                     state = SCANNER_DOUBLE;
-                    
                 } else {
                     return ERR_LEXICAL;
                 }
@@ -423,19 +386,14 @@ Status scanner_get_token(Token *pToken) {
                 if (input >= '0' && input <= '9') {
                     
                 } else if (input == 'e' || input == 'E') {
-                    
                     state = SCANNER_EXP_BASE;
                 } else {
-                    nextLetter = input;
-                    
                     pToken->type = TOKEN_DOUBLE_LIT;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
                 break;
             case SCANNER_EXP_BASE:
                 if (input >= '0' && input <= '9') {
-                    
                     state = SCANNER_EXP;
                 } else if (input == '+' || input == '-') {
                     state = SCANNER_EXP_SIGN;
@@ -445,7 +403,6 @@ Status scanner_get_token(Token *pToken) {
                 break;
             case SCANNER_EXP_SIGN:
                 if (input >= '0' && input <= '9') {
-                    
                     state = SCANNER_EXP;
                 } else {
                     return ERR_LEXICAL;
@@ -455,11 +412,8 @@ Status scanner_get_token(Token *pToken) {
                 if (input >= '0' && input <= '9') {
                     
                 } else {
-                    nextLetter = input;
-                    
                     pToken->type = TOKEN_DOUBLE_LIT;
-                    pToken->str[str_index] = '\0';
-                    return SUCCESS;
+                    SCAN_END();
                 }
                 break;
 

@@ -16,7 +16,8 @@
 #include "common.h"
 #include "scanner.h"
 #include "expression.h"
-// #include "syntaxstack.h"
+#include "types.h"
+#include "symtable.h"
 
 #include <stdio.h>
 #include <stdbool.h>

@@ -14,6 +14,7 @@
 
 #include "common.h"
 #include "stdlib.h"
+#include "scanner.h"
 
 typedef enum {
     TYPE_NONE,
@@ -34,6 +35,8 @@ typedef struct {
     TypeListItem *first;
     TypeListItem *active;
 } TypeList;
+
+Type tokentype_to_type(TokenType tt);
 
 void list_init(TypeList *list);
 Status list_append(TypeList *list, Type type);

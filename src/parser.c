@@ -23,6 +23,8 @@ if (status != SUCCESS) { break; }
 
 #define ASSERT_TOKEN_TYPE(token_type) if (token.type != (token_type)) { break; }
 
+#define ASSERT_NT(nt_function_return) if (!(nt_function_return)) { break; }
+
 bool nt_prog();
 bool nt_prolog();
 bool nt_prog_body();
@@ -37,6 +39,21 @@ bool nt_fn_def_params_next();
 bool nt_fn_returns();
 bool nt_fn_returns_next();
 bool nt_fn_body();
+
+bool nt_var_decl();
+bool nt_var_decl_assign();
+bool nt_assignment();
+bool nt_if();
+bool nt_while();
+bool nt_return();
+bool nt_r_value_list();
+bool nt_r_value_list_next();
+bool nt_l_value_list();
+bool nt_l_value_list_next();
+bool nt_l_value();
+
+
+
 
 bool nt_fn_call();
 bool nt_fn_call_params();
@@ -208,25 +225,21 @@ bool nt_fn_def() {
         case TOKEN_FUNCTION:
             // <fn_def> -> TOKEN_FUNCTION TOKEN_IDENTIFIER
             // TOKEN_PAR_L <fn_def_params> TOKEN_PAR_R
-            // <fn_returns> <fn_body>
+            // <fn_returns> <fn_body> TOKEN_END
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             // TODO semantic check, add into symbol table ...
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
-            if (!nt_fn_def_params()) {
-                break;
-            }
+            ASSERT_NT(nt_fn_def_params());
             // TODO semantic check of params
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN();
-            if (!nt_fn_returns()) {
-                break;
-            }
-
-            // TODO continue here, body is missing
-
+            ASSERT_NT(nt_fn_returns());
+            ASSERT_NT(nt_fn_body());
+            ASSERT_TOKEN_TYPE(TOKEN_END);
+            GET_NEW_TOKEN();
             found = true;
             break;
 
@@ -355,26 +368,26 @@ bool nt_fn_body() {
     switch (token.type) {
         case TOKEN_LOCAL:
             // variable declaration
-            //TODO
+            ASSERT_NT(nt_var_decl());
+            ASSERT_NT(nt_fn_body());
+            found = true;
             break;
 
         case TOKEN_IDENTIFIER:
-            // <fn_body> -> TOKEN_IDENTIFIER TOKEN_ASSIGN <expr> <fn_body>
-            GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
-            GET_NEW_TOKEN();
-            if (!nt_expr()) {
-                break;
-            }
+            // assignment or function call
+            // <fn_body> -> nt_l_value_list TOKEN_ASSIGN <expr> <fn_body>
+            ASSERT_NT(nt_assignment());
+            ASSERT_NT(nt_fn_body());
             found = true;
             break;
 
         case TOKEN_RETURN:
-            // TODO
+            ASSERT_NT(nt_return());
+            ASSERT_NT(nt_fn_body()); // TODO maybe stop after return?
+            found = true;
             break;
 
         case TOKEN_END:
-            GET_NEW_TOKEN();
             found = true;
             break;
 
@@ -384,6 +397,191 @@ bool nt_fn_body() {
     return found;
 }
 
+bool nt_var_decl() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_LOCAL:
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_type());
+            ASSERT_NT(nt_var_decl_assign());
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_var_decl_assign() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_ASSIGN:
+            GET_NEW_TOKEN();
+            // This could be an expression or function call
+            bool expr = false;
+            if (token.type == TOKEN_INTEGER_LIT
+                || token.type == TOKEN_DOUBLE_LIT
+                || token.type == TOKEN_STRING_LIT
+                || token.type == TOKEN_NIL) {
+                expr = true;
+            } else {
+                ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+                // check if the identifier is a variable or a function
+                // expr = TODO check in symbol table i guess
+            }
+
+            found = expr ? nt_expr(&token) : nt_fn_call();
+            break;
+
+        default:
+            // the variable does not have to be assigned, which makes it nil
+            found = true;
+            break;
+    }
+    return found;
+}
+
+bool nt_assignment() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_IDENTIFIER:
+            ASSERT_NT(nt_l_value_list());
+            ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
+            GET_NEW_TOKEN();
+            // decide between function call and list of expressions
+            bool expr = false;
+            if (token.type == TOKEN_INTEGER_LIT
+                || token.type == TOKEN_DOUBLE_LIT
+                || token.type == TOKEN_STRING_LIT
+                || token.type == TOKEN_NIL) {
+                expr = true;
+            } else {
+                ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+                // check if the identifier is a variable or a function
+                // expr = TODO check in symbol table i guess
+            }
+
+            if (expr) {
+                ASSERT_NT(nt_r_value_list());
+            } else {
+                ASSERT_NT(nt_fn_call());
+            }
+
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_if() {
+    return true;
+}
+
+bool nt_while() {
+    return true;
+}
+
+bool nt_return() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_RETURN:
+            // <return> -> TOKEN_RETURN <r_value_list>
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_r_value_list());
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_r_value_list() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_IDENTIFIER:
+        case TOKEN_INTEGER_LIT:
+        case TOKEN_DOUBLE_LIT:
+        case TOKEN_STRING_LIT:
+        case TOKEN_NIL:
+            // <r_value_list> -> <r_value> <r_value_list_next>
+            ASSERT_NT(nt_expr(&token));
+            ASSERT_NT(nt_r_value_list_next());
+            found = true;
+            break;
+
+        default:
+            // cannot be empty
+            break;
+    }
+    return found;
+}
+
+bool nt_r_value_list_next() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_COMMA:
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_expr(&token));
+            ASSERT_NT(nt_r_value_list_next());
+            found = true;
+            break;
+
+        default:
+            // can be empty
+            found = true;
+            break;
+    }
+    return found;
+}
+
+bool nt_l_value_list() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_IDENTIFIER:;
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_l_value_list_next());
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_l_value_list_next() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_COMMA:;
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            GET_NEW_TOKEN();
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
 
 bool nt_fn_call() {
     bool found = false;
@@ -402,7 +600,6 @@ bool nt_fn_call() {
             GET_NEW_TOKEN()
             found = true;
             break;
-
 
         default:
             // <fn_def_params> -> eps
@@ -460,7 +657,7 @@ bool nt_fn_call_params_next() {
             }
             GET_NEW_TOKEN();
             // read another comma and parameter or eps
-            found = nt_fn_decl_params_next();
+            found = nt_fn_call_params_next();
             break;
 
         default:
@@ -510,6 +707,10 @@ Status parser_run() {
         return ERR_SYNTAX;
     }
 
+    // TODO delete later
+    if (status != SUCCESS) {
+        fprintf(stderr, "error on line %u:%u:\n\n", token.lineNumber, token.characterNumber);
+    }
     return status;
 }
 

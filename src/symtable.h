@@ -60,4 +60,13 @@ void symtab_for_each(const SymTab *table, void (*f)(SymTabPair *data));
 void symtab_clear(SymTab *table);    // ruší všechny záznamy
 void symtab_destroy(SymTab *table);     // destruktor tabulky
 
+
+typedef struct {
+    void *placeholder;
+} SymbolTable;
+
+Type st_token_to_type(SymbolTable *st, Token token);
+SymTabValue *st_lookup(SymbolTable *st, Token token);
+
+
 #endif // SYMTABLE_H

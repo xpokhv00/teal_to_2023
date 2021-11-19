@@ -63,12 +63,19 @@ void symstack_destroy(SymStack* s) {
     s->allocatedElements = 0;
 }
 
-bool nt_expr() {
+bool nt_expr(Token *pToken) {
     // TODO this is where you begin
+
     SymStack s;
     symstack_init(&s);
     symstack_push(&s, (SymbolType)TOKEN_IDENTIFIER);
     symstack_pop(&s);
     symstack_destroy(&s);
+
+    scanner_destroy_token(pToken);
+    Status status = scanner_get_token(pToken);
+    if (status != SUCCESS) {
+        return false;
+    }
     return true;
 }

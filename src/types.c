@@ -11,6 +11,25 @@
 
 #include "types.h"
 
+Type tokentype_to_type(TokenType tt) {
+    switch (tt) {
+        case TOKEN_INTEGER_LIT:
+            return INTEGER;
+
+        case TOKEN_DOUBLE_LIT:
+            return NUMBER;
+
+        case TOKEN_STRING_LIT:
+            return STRING;
+
+        case TOKEN_NIL:
+            return NIL;
+
+        default:
+            return TYPE_NONE;
+    }
+}
+
 void list_init(TypeList *list) {
     list->first = NULL;
 }

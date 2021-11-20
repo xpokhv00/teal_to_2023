@@ -18,55 +18,62 @@
 #include <stdbool.h>
 #include "types.h"
 
-#define SYMTAB_SIZE 32
+#define HTAB_SIZE 32
 
-// Tabulka:
-struct symtab;                        // neúplná deklarace struktury - uživatel nevidí obsah
-typedef struct symtab SymTab;         // typedef podle zadání
+// Table:
+struct htab;
+typedef struct htabitem HTabItem;
+typedef struct htab HTab;
+typedef struct symboltable SymbolTable;
 
-// Typy:
-typedef const char *SymTabKey;
+// Types:
+typedef const char *HTabKey;
 typedef struct {
     bool        defined;
     TypeList    paramList;          // Only used in functions
     TypeList    returnList;         // Only used in functions
     Type        varType;            // Only used in variables
-} SymTabValue;
+} HTabValue;
 
-// Dvojice dat v tabulce
+// Pair of values in hash table
 typedef struct  {
-    SymTabKey    key;              // nazev funkce/promenne
-    SymTabValue  value;            // struktura se seznamem parametru
-} SymTabPair;                      // typedef podle zadání
+    HTabKey    key;              // Function/Variable name
+    HTabValue  value;            // Structure containing data
+} HTabPair;
 
-// Rozptylovací (hash) funkce (stejná pro všechny tabulky v programu)
-// Pokud si v programu definujete stejnou funkci, použije se ta vaše.
-size_t symtab_hash_function(SymTabKey str);
+// Full structure of an item
+struct htabitem {
+    HTabPair htab_pair;
+    struct htabitem *next;
+};
 
-// Funkce pro práci s tabulkou:
-SymTab *symtab_init();                    // konstruktor tabulky
-SymTab *symtab_move(size_t n, SymTab *from);      // přesun dat do nové tabulky
-size_t symtab_size(const SymTab *table);              // počet záznamů v tabulce
-size_t symtab_bucket_count(const SymTab *t);      // velikost pole
+// Hash table full structure
+struct htab {
+    HTabItem **htab_items;
+    unsigned int arr_size;
+    HTab *next;
+    bool readHigher;
+};
 
-SymTabPair *symtab_find(SymTab *table, SymTabKey key);      // hledání
-SymTabPair *symtab_insert(SymTab *table, SymTabKey key, SymTabValue value);
+struct symboltable {
+    HTab *top;
+};
 
-bool symtab_erase(SymTab *table, SymTabKey key);    // ruší zadaný záznam
+// Hash table functions
+HTab *htab_init();
+size_t htab_hash_function(HTabKey str);
+HTabPair *htab_find(HTab *table, HTabKey key);
+HTabPair *htab_insert(HTab *table, HTabKey key, HTabValue value);
+void htab_clear(HTab *table);
+void htab_destroy(HTab *table);
 
-// for_each: projde všechny záznamy a zavolá na ně funkci f
-void symtab_for_each(const SymTab *table, void (*f)(SymTabPair *data));
-
-void symtab_clear(SymTab *table);    // ruší všechny záznamy
-void symtab_destroy(SymTab *table);     // destruktor tabulky
-
-
-typedef struct {
-    void *placeholder;
-} SymbolTable;
-
+// Symtable functions (table of symbols)
+Status st_init(SymbolTable *st);
+Status st_push_frame(SymbolTable *st, bool transparent);
+HTabPair *st_lookup(SymbolTable *st, char *key);
+void st_pop_frame(SymbolTable *st);
+HTabPair *st_add(SymbolTable *st, char *key);
+void st_destroy(SymbolTable *st);
 Type st_token_to_type(SymbolTable *st, Token token);
-SymTabValue *st_lookup(SymbolTable *st, Token token);
-
 
 #endif // SYMTABLE_H

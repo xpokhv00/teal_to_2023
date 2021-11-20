@@ -778,7 +778,9 @@ Status parser_run() {
         return status;
     }
 
+    gen_init(stdout);
     bool valid = nt_prog();
+    gen_destroy();
 
     if (status == SUCCESS && !valid) {
         char *fstring = "Syntax error on line %u:%u:\nUnexpected token `%s`\n\n";

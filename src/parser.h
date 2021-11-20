@@ -18,6 +18,7 @@
 #include "expression.h"
 #include "types.h"
 #include "symtable.h"
+#include "generator.h"
 
 #include <stdio.h>
 #include <stdbool.h>

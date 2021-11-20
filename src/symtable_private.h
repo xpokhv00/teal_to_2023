@@ -21,18 +21,8 @@
 
 // Encapsulated header file
 
-// Full structure of an item
-struct symtabitem {
-    SymTabPair symtab_pair;
-    struct symtabitem *next;
-};
 
-typedef struct symtabitem SymTabItem;
 
-// Hash table full structure
-struct symtab {
-    SymTabItem **symtab_items;
-    unsigned int arr_size;
-};
+
 
 #endif // SYMTABLE_PRIVATE_H

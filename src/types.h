@@ -36,6 +36,7 @@ typedef struct {
     TypeListItem *active;
 } TypeList;
 
+Type token_keyword_to_type(TokenType tt);
 Type token_type_to_type(TokenType tt);
 
 TypeList list_init();

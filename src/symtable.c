@@ -1,5 +1,5 @@
 /**
- * @file symtable.c
+ * @file symtab.c
  *
  * @author Hnatovskyj Vítek xhnato00
  * @author Lán Rostislav xlanro00
@@ -66,7 +66,7 @@ HTabPair *htab_find(HTab *table, HTabKey key) {
 }
 
 // Searches for an item, creates if not found
-HTabPair *htab_insert(HTab *table, HTabKey key, HTabValue value) {
+HTabPair *htab_insert(HTab *table, HTabKey key) {
     unsigned key_hash = htab_hash_function(key) % table->arr_size;
     HTabItem **element = &(table->htab_items[key_hash]);
 
@@ -98,7 +98,14 @@ HTabPair *htab_insert(HTab *table, HTabKey key, HTabValue value) {
 
     // Initialize new item
     strcpy((char *)(*element)->htab_pair.key , key);
-    (*element)->htab_pair.value = value;
+    TypeList paramList = list_init();
+    TypeList returnList = list_init();
+
+    (*element)->htab_pair.value.defined = false;
+    (*element)->htab_pair.value.paramList = paramList;
+    (*element)->htab_pair.value.returnList = returnList;
+    (*element)->htab_pair.value.varType = TYPE_NONE;
+    (*element)->htab_pair.key = key;
     (*element)->next = NULL;
 
     //returning new item pair
@@ -135,7 +142,7 @@ void htab_destroy(HTab *table) {
     free(table);
 }
 
-Status st_init(SymbolTable *st) {
+Status st_init(SymTab *st) {
     st->top = htab_init();
     if (st->top == NULL) {
         return ERR_INTERNAL;
@@ -144,7 +151,7 @@ Status st_init(SymbolTable *st) {
     return SUCCESS;
 }
 
-Status st_push_frame(SymbolTable *st, bool transparent) {
+Status st_push_frame(SymTab *st, bool transparent) {
     HTab *next = st->top;
     st->top= htab_init();
     if (st->top == NULL) {
@@ -156,7 +163,7 @@ Status st_push_frame(SymbolTable *st, bool transparent) {
     return SUCCESS;
 }
 
-HTabPair *st_lookup(SymbolTable *st, char *key) {
+HTabPair *st_lookup(SymTab *st, const char *key) {
     HTab *currentTable = st->top;
     do {
         HTabPair *pair = htab_find(currentTable, key);
@@ -168,24 +175,41 @@ HTabPair *st_lookup(SymbolTable *st, char *key) {
     return NULL;
 }
 
-HTabPair *st_add(SymbolTable *st, char *key) {
-    return NULL;
+Status st_add(SymTab *st, const char *key, HTabPair **pair) {
+    if (st_lookup(st, key) != NULL) {
+        return ERR_SEMANTIC_DEF;
+    }
+    else {
+        *pair = htab_insert(st->top, key);
+        return SUCCESS;
+    }
 }
 
-void st_pop_frame(SymbolTable *st) {
+void st_pop_frame(SymTab *st) {
     HTab *deleted = st->top;
     st->top = st->top->next;
     htab_destroy(deleted);
 }
 
-void st_destroy(SymbolTable *st) {
+void st_destroy(SymTab *st) {
+    HTab *deleted = st->top;
+    while (st->top) {
+        deleted = st->top;
+        st->top = st->top->next;
+        htab_destroy(deleted);
+    }
 }
 
-Type st_token_to_type(SymbolTable *st, Token token) {
-    Type type = tokentype_to_type(token.type);
+Type st_token_to_type(SymTab *st, Token token) {
+    Type type = token_type_to_type(token.type);
     if (type != TYPE_NONE) {
         return type;
     }
-    // TODO podivat se do tabulky
+
+    HTabPair *pair = st_lookup(st, token.str);
+    if (pair != NULL) {
+        return pair->value.varType;
+    }
+
     return TYPE_NONE;
 }

@@ -36,9 +36,9 @@ typedef struct {
     TypeListItem *active;
 } TypeList;
 
-Type tokentype_to_type(TokenType tt);
+Type token_type_to_type(TokenType tt);
 
-void list_init(TypeList *list);
+TypeList list_init();
 Status list_append(TypeList *list, Type type);
 void list_first(TypeList *list);
 void list_next(TypeList *list);

@@ -1,5 +1,5 @@
 /**
- * @file symtable.h
+ * @file symtab.h
  *
  * @author Hnatovskyj Vítek xhnato00
  * @author Lán Rostislav xlanro00
@@ -24,7 +24,7 @@
 struct htab;
 typedef struct htabitem HTabItem;
 typedef struct htab HTab;
-typedef struct symboltable SymbolTable;
+typedef struct symtab SymTab;
 
 // Types:
 typedef const char *HTabKey;
@@ -32,7 +32,7 @@ typedef struct {
     bool        defined;
     TypeList    paramList;          // Only used in functions
     TypeList    returnList;         // Only used in functions
-    Type        varType;            // Only used in variables
+    Type        varType;            // Only used in variables, TYPE_NONE for functions
 } HTabValue;
 
 // Pair of values in hash table
@@ -55,7 +55,7 @@ struct htab {
     bool readHigher;
 };
 
-struct symboltable {
+struct symtab {
     HTab *top;
 };
 
@@ -63,17 +63,17 @@ struct symboltable {
 HTab *htab_init();
 size_t htab_hash_function(HTabKey str);
 HTabPair *htab_find(HTab *table, HTabKey key);
-HTabPair *htab_insert(HTab *table, HTabKey key, HTabValue value);
+HTabPair *htab_insert(HTab *table, HTabKey key);
 void htab_clear(HTab *table);
 void htab_destroy(HTab *table);
 
 // Symtable functions (table of symbols)
-Status st_init(SymbolTable *st);
-Status st_push_frame(SymbolTable *st, bool transparent);
-HTabPair *st_lookup(SymbolTable *st, char *key);
-void st_pop_frame(SymbolTable *st);
-HTabPair *st_add(SymbolTable *st, char *key);
-void st_destroy(SymbolTable *st);
-Type st_token_to_type(SymbolTable *st, Token token);
+Status st_init(SymTab *st);
+Status st_push_frame(SymTab *st, bool transparent);
+HTabPair *st_lookup(SymTab *st, const char *key);
+void st_pop_frame(SymTab *st);
+Status st_add(SymTab *st, const char *key, HTabPair **pair);
+void st_destroy(SymTab *st);
+Type st_token_to_type(SymTab *st, Token token);
 
 #endif // SYMTABLE_H

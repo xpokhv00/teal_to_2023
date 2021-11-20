@@ -11,7 +11,7 @@
 
 #include "types.h"
 
-Type tokentype_to_type(TokenType tt) {
+Type token_type_to_type(TokenType tt) {
     switch (tt) {
         case TOKEN_INTEGER_LIT:
             return INTEGER;
@@ -30,8 +30,30 @@ Type tokentype_to_type(TokenType tt) {
     }
 }
 
-void list_init(TypeList *list) {
-    list->first = NULL;
+Type token_keyword_to_type(TokenType tt) {
+    switch (tt) {
+        case TOKEN_INTEGER_KW:
+            return INTEGER;
+
+        case TOKEN_NUMBER_KW:
+            return NUMBER;
+
+        case TOKEN_STRING_KW:
+            return STRING;
+
+        case TOKEN_NIL:
+            return NIL;
+
+        default:
+            return TYPE_NONE;
+    }
+}
+
+TypeList list_init() {
+    TypeList list;
+    list.first = NULL;
+    list.active = NULL;
+    return list;
 }
 
 Status list_append(TypeList *list, Type type) {

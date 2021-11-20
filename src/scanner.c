@@ -50,8 +50,6 @@ Status scanner_get_token(Token *pToken) {
     int input;
 
     pToken->str = NULL;
-    pToken->characterNumber = characterCount;
-    pToken->lineNumber = lineCount;
 
     while (true) {
         if (nextLetter != EOF) {

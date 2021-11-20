@@ -31,18 +31,19 @@ static int nextLetter;
 
 #define SCAN_END() nextLetter = input; \
     pToken->str[str_index] = '\0'; \
-    return SUCCESS;
+    return SUCCESS
+
 
 Status scanner_init(FILE *in) {
     inFile = in;
     lineCount = 1;
-    characterCount = 1;
+    characterCount = 0;
     nextLetter = EOF;
     return SUCCESS;
 }
 
 Status scanner_get_token(Token *pToken) {
-    unsigned str_index = 0;
+    unsigned str_index;
     unsigned allocated_length = 0;
 
     ScannerState state = SCANNER_START;
@@ -60,13 +61,17 @@ Status scanner_get_token(Token *pToken) {
             input = getc(inFile);
             characterCount++;
             if (input == '\n') {
-                characterCount = 1;
+                characterCount = 0;
                 lineCount++;
             }
         }
 
         switch (state) {
             case SCANNER_START:
+                str_index = 0;
+                pToken->characterNumber = characterCount;
+                pToken->lineNumber = lineCount;
+
                 switch (input) {
                     case ':':
                         state = SCANNER_COLON;
@@ -132,8 +137,6 @@ Status scanner_get_token(Token *pToken) {
 
                     default:
                         if (isspace(input)) {
-                            pToken->characterNumber = characterCount;
-                            pToken->lineNumber = lineCount;
                             continue;
                         } else if (input >= '0' && input <= '9') {
                             state = SCANNER_INT;
@@ -248,7 +251,6 @@ Status scanner_get_token(Token *pToken) {
             case SCANNER_MINUS:
                 if (input == '-') {
                     state = SCANNER_COMMENT_START;
-                    str_index = 0;
                 } else {
                     SCAN_END();
                 }
@@ -325,7 +327,7 @@ Status scanner_get_token(Token *pToken) {
 
             case SCANNER_COMMENT_START:
                 if (input == '\n') {
-                    state = SCANNER_COMMENT_END;
+                    state = SCANNER_START;
                 } else if (input == '[') {
                     state = SCANNER_ALMOST_BLOCK;
                 } else {
@@ -341,12 +343,8 @@ Status scanner_get_token(Token *pToken) {
                 break;
             case SCANNER_COMMENT:
                 if (input == '\n') {
-                    state = SCANNER_COMMENT_END;
+                    state = SCANNER_START;
                 }
-                break;
-            case SCANNER_COMMENT_END:
-                nextLetter = input;
-                state = SCANNER_START;
                 break;
             case SCANNER_COMMENT_BLOCK:
                 if (input == ']') {
@@ -355,7 +353,7 @@ Status scanner_get_token(Token *pToken) {
                 break;
             case SCANNER_ALMOST_END:
                 if (input == ']') {
-                    state = SCANNER_COMMENT_END;
+                    state = SCANNER_START;
                 } else {
                     state = SCANNER_COMMENT_BLOCK;
                 }

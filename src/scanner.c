@@ -326,7 +326,7 @@ Status scanner_get_token(Token *pToken) {
                 break;
 
             case SCANNER_COMMENT_START:
-                if (input == '\n') {
+                if (input == '\n' || input == EOF) {
                     state = SCANNER_START;
                 } else if (input == '[') {
                     state = SCANNER_ALMOST_BLOCK;
@@ -342,13 +342,15 @@ Status scanner_get_token(Token *pToken) {
                 }
                 break;
             case SCANNER_COMMENT:
-                if (input == '\n') {
+                if (input == '\n' || input == EOF) {
                     state = SCANNER_START;
                 }
                 break;
             case SCANNER_COMMENT_BLOCK:
                 if (input == ']') {
                     state = SCANNER_ALMOST_END;
+                } else if (input == EOF) {
+                    state = SCANNER_START;
                 }
                 break;
             case SCANNER_ALMOST_END:

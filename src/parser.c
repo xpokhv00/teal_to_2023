@@ -44,16 +44,15 @@ bool nt_var_decl();
 bool nt_var_decl_assign();
 bool nt_assignment();
 bool nt_if();
+bool nt_else();
 bool nt_while();
 bool nt_return();
-bool nt_r_value_list();
+
+bool nt_r_value_list(bool emptyValid);
 bool nt_r_value_list_next();
 bool nt_l_value_list();
 bool nt_l_value_list_next();
 bool nt_l_value();
-
-
-
 
 bool nt_fn_call();
 bool nt_fn_call_params();
@@ -68,7 +67,9 @@ bool nt_prog() {
     switch (token.type) {
         // pravidlo <prog> -> <prolog> <prog_body>
         case TOKEN_REQUIRE:
-            found = nt_prolog() && nt_prog_body();
+            ASSERT_NT(nt_prolog());
+            ASSERT_NT(nt_prog_body());
+            found = true;
             break;
 
         default:
@@ -387,11 +388,16 @@ bool nt_fn_body() {
             found = true;
             break;
 
-        case TOKEN_END:
-            found = true;
+        case TOKEN_IF:
+            found = nt_if() && nt_fn_body();
+            break;
+
+        case TOKEN_WHILE:
+            found = nt_while() && nt_fn_body();
             break;
 
         default:
+            found = true;
             break;
     }
     return found;
@@ -470,7 +476,7 @@ bool nt_assignment() {
             }
 
             if (expr) {
-                ASSERT_NT(nt_r_value_list());
+                ASSERT_NT(nt_r_value_list(false));
             } else {
                 ASSERT_NT(nt_fn_call());
             }
@@ -485,21 +491,19 @@ bool nt_assignment() {
 }
 
 bool nt_if() {
-    return true;
-}
-
-bool nt_while() {
-    return true;
-}
-
-bool nt_return() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_RETURN:
-            // <return> -> TOKEN_RETURN <r_value_list>
+        case TOKEN_IF:
+            // <if> -> TOKEN_IF <expr> TOKEN_THEN <fn_body> <else> TOKEN_END
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_r_value_list());
+            ASSERT_NT(nt_expr(&token));
+            ASSERT_TOKEN_TYPE(TOKEN_THEN);
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_fn_body());
+            ASSERT_NT(nt_else());
+            ASSERT_TOKEN_TYPE(TOKEN_END);
+            GET_NEW_TOKEN();
             found = true;
             break;
 
@@ -509,7 +513,65 @@ bool nt_return() {
     return found;
 }
 
-bool nt_r_value_list() {
+bool nt_else() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_ELSE:
+            // <else> -> TOKEN_ELSE <fn_body>
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_fn_body());
+            found = true;
+            break;
+
+        default:
+            // <else> -> eps
+            found = true;
+            break;
+    }
+    return found;
+}
+
+bool nt_while() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_WHILE:
+            // <while> -> TOKEN_WHILE <expr> TOKEN_DO <fn_body> TOKEN_END
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_expr(&token));
+            ASSERT_TOKEN_TYPE(TOKEN_DO);
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_fn_body());
+            ASSERT_TOKEN_TYPE(TOKEN_END);
+            GET_NEW_TOKEN();
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_return() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_RETURN:
+            // <return> -> TOKEN_RETURN <r_value_list>
+            GET_NEW_TOKEN();
+            ASSERT_NT(nt_r_value_list(true));
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_r_value_list(bool emptyValid) {
     bool found = false;
 
     switch (token.type) {
@@ -525,7 +587,9 @@ bool nt_r_value_list() {
             break;
 
         default:
-            // cannot be empty
+            if (emptyValid) {
+                found = true;
+            }
             break;
     }
     return found;
@@ -554,8 +618,8 @@ bool nt_l_value_list() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:;
-            GET_NEW_TOKEN();
+        case TOKEN_IDENTIFIER:
+            ASSERT_NT(nt_l_value());
             ASSERT_NT(nt_l_value_list_next());
             found = true;
             break;
@@ -570,9 +634,24 @@ bool nt_l_value_list_next() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:;
+        case TOKEN_COMMA:
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            ASSERT_NT(nt_l_value());
+            found = true;
+            break;
+
+        default:
+            break;
+    }
+    return found;
+}
+
+bool nt_l_value() {
+    bool found = false;
+
+    switch (token.type) {
+        case TOKEN_IDENTIFIER:
+            // TODO semantics
             GET_NEW_TOKEN();
             found = true;
             break;

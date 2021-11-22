@@ -275,17 +275,19 @@ bool nt_fn_def() {
             // Create local frame for this function
             st_push_frame(&st);
 
+            gen_print("PUSHFRAME\n");
             ASSERT_NT(nt_fn_def_params(fnPair, isDeclared));
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_returns(fnPair, isDeclared));
             ASSERT_NT(nt_fn_body());
+            gen_print("POPFRAME\n");
+            gen_print("RETURN\n");
 
             // Destroy local frame
             st_pop_frame(&st);
 
             ASSERT_TOKEN_TYPE(TOKEN_END);
-            gen_print("RETURN\n");
             GET_NEW_TOKEN();
             found = true;
             break;
@@ -813,6 +815,7 @@ bool nt_fn_call() {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
+            gen_print("CREATEFRAME\n");
             if (!nt_fn_call_params()) {
                 break;
             }
@@ -822,9 +825,6 @@ bool nt_fn_call() {
             break;
 
         default:
-            // <fn_def_params> -> eps
-            // there don't have to be any parameters
-            found = true;
             break;
     }
     return found;
@@ -841,6 +841,16 @@ bool nt_fn_call_params() {
         case TOKEN_STRING_LIT:
         case TOKEN_NIL:
             // TODO semantic
+
+            // move the argument into the temporary frame
+            gen_print("MOVE TF@%%param%d ", 2); //list_active_index()); todo
+            if (token.type == TOKEN_IDENTIFIER) {
+                gen_print("LF@%s", token.str);
+            } else {
+                gen_print_literal(token);
+            }
+            gen_print("\n");
+
             GET_NEW_TOKEN();
             found = nt_fn_call_params_next();
             break;
@@ -875,6 +885,16 @@ bool nt_fn_call_params_next() {
                     break;
                 }
             }
+
+            // move the argument into the temporary frame
+            gen_print("MOVE TF@%%param%d ", 2);
+            if (token.type == TOKEN_IDENTIFIER) {
+                gen_print("LF@%s", token.str);
+            } else {
+                gen_print_literal(token);
+            }
+            gen_print("\n");
+
             GET_NEW_TOKEN();
             // read another comma and parameter or eps
             found = nt_fn_call_params_next();

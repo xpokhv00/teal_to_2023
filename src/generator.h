@@ -13,6 +13,7 @@
 #define GENERATOR_H
 
 #include "common.h"
+#include "scanner.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,5 +27,7 @@ void gen_buffer_stop();
 Status gen_print(const char *format, ...);
 Status gen_prepend(const char *format, ...);
 void gen_destroy();
+
+Status gen_print_literal(Token token);
 
 #endif //GENERATOR_H

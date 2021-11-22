@@ -78,3 +78,30 @@ void gen_destroy() {
     gen_buffer_stop();
     free(printer.buffer);
 }
+
+Status gen_print_literal(Token token) {
+    switch (token.type) {
+        case TOKEN_INTEGER_LIT:
+            gen_print("int@%s", token.str);
+            break;
+        case TOKEN_DOUBLE_LIT:
+            gen_print("float@%s", token.str);
+            break;
+        case TOKEN_STRING_LIT:;
+            // first, get rid of the quote symbols
+            size_t neededLength = strlen(token.str) + 1;
+            char* str = malloc(neededLength);
+            strcpy(str, &token.str[1]);
+            str[strlen(str) - 1] = '\0';
+            // TODO more complex conversion?
+            gen_print("string@%s", str);
+            break;
+        case TOKEN_NIL:
+            gen_print("nil@nil");
+            break;
+
+        default:
+            return ERR_INTERNAL;
+    }
+    return SUCCESS;
+}

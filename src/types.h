@@ -46,5 +46,6 @@ void list_next(TypeList *list);
 bool list_is_active(TypeList *list);
 Type list_get_active(TypeList *list);
 void list_destroy(TypeList *list);
+unsigned list_active_index(TypeList *list);
 
 #endif //TYPES_H

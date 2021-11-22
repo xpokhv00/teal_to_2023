@@ -66,9 +66,10 @@ Status list_append(TypeList *list, Type type) {
     if (*current == NULL) {
         return ERR_INTERNAL;
     }
+
     (*current)->next = NULL;
     (*current)->type = type;
-
+    list->active = (*current);
     return SUCCESS;
 }
 
@@ -100,4 +101,14 @@ void list_destroy(TypeList *list) {
         current = current->next;
         free(deleted);
     }
+}
+
+unsigned list_active_index(TypeList *list) {
+    unsigned count = 0;
+    TypeListItem *current = list->first;
+    while ((current != list->active) && (current != NULL)) {
+        current = current->next;
+        count++;
+    }
+    return count;
 }

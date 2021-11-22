@@ -83,7 +83,7 @@ void list_next(TypeList *list) {
 }
 
 bool list_is_active(TypeList *list) {
-    return (list->active);
+    return list->active != NULL;
 }
 
 Type list_get_active(TypeList *list) {

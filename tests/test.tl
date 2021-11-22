@@ -1,13 +1,16 @@
 require "ifj21"
 
-function main()
-    if 1 then
-        return
-    else
-    end
+global foo : function (string, integer) : string, integer
 
-    while a do
-
-    end
+function foo (a : string, b : integer) : string, integer
+    return param
 end
-main() -- prikaz hlavniho tela programu
+
+function concat (x : string, y : string) : string, integer
+    return x
+end
+function main()
+    local x : string
+    local ret: integer
+end
+main()

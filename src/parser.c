@@ -152,8 +152,12 @@ bool nt_fn_decl() {
         case TOKEN_GLOBAL:
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+
+            // Checks if identifier already exists in symtable
+            // If not creates one
             HTabPair *pair;
             ASSERT_SUCCESS(st_add(&st, token, &pair));
+
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
@@ -169,7 +173,6 @@ bool nt_fn_decl() {
             if (!nt_fn_returns(pair, false)) {
                 break;
             }
-            // TODO semantic check with symbol table ...
 
             found = true;
             break;
@@ -189,7 +192,10 @@ bool nt_fn_decl_params(HTabPair *pair) {
         case TOKEN_NUMBER_KW:
         case TOKEN_STRING_KW:
         case TOKEN_NIL:;
+
+            // Adds parameter name into parameter list of a function
             ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
+
             GET_NEW_TOKEN();
             found = nt_fn_decl_params_next(pair);
             break;
@@ -210,7 +216,10 @@ bool nt_fn_decl_params_next(HTabPair *pair) {
         case TOKEN_COMMA:
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
+
+            // Adds parameter name into parameter list of a function
             ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
+
             if (!nt_type()) {
                 break;
             }
@@ -240,30 +249,41 @@ bool nt_fn_def() {
             // <fn_returns> <fn_body> TOKEN_END
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
-            // Semantics
+
+            // Check if function is already declared
             HTabPair *fnPair = st_lookup(&st, token.str);
-            bool isDeclared = fnPair != NULL;
+            bool isDeclared = (fnPair != NULL);
             if (!isDeclared) {
+                // Adds function name into symtable
                 ASSERT_SUCCESS(st_add(&st, token, &fnPair));
                 fnPair = st_lookup(&st, token.str);
             } else {
+                // Function cannot be defined more than once
                 if (fnPair->value.defined) {
                     status = ERR_SEMANTIC_DEF;
+                    break;
                 }
             }
+            // Now the function is declared
             fnPair->value.defined = true;
 
             gen_print("LABEL %s\n", token.str);
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
+
+            // Create local frame for this function
             st_push_frame(&st);
+
             ASSERT_NT(nt_fn_def_params(fnPair, isDeclared));
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_returns(fnPair, isDeclared));
             ASSERT_NT(nt_fn_body());
+
+            // Destroy local frame
             st_pop_frame(&st);
+
             ASSERT_TOKEN_TYPE(TOKEN_END);
             gen_print("RETURN\n");
             GET_NEW_TOKEN();
@@ -282,15 +302,19 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
     switch (token.type) {
         case TOKEN_IDENTIFIER:;
             // <fn_def_params> -> TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_def_params_next>
+
+            // Check for parameter name in symtable, add if not found
             HTabPair *paramPair;
             ASSERT_SUCCESS(st_add(&st, token, &paramPair));
+
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
-            // Semantic check
+
             Type paramType = token_keyword_to_type(token.type);
             paramPair->value.varType = paramType;
             if (isDeclared) {
+                // Check if parameter types from declaration match the ones from definition
                 list_first(&pair->value.paramList);
                 Type saved = list_get_active(&pair->value.paramList);
                 if (saved != paramType) {
@@ -298,7 +322,8 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
                     break;
                 }
             } else {
-                status = ERR_SEMANTIC_FUNC;
+                // For undeclared function add parameters to the list
+                ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             }
 
             if (!nt_type()) {
@@ -328,15 +353,20 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
             // <fn_def_params_next> -> TOKEN_COMMA TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+
+            // Check for parameter name in symtable, add if not found
             HTabPair *paramPair;
             ASSERT_SUCCESS(st_add(&st, token, &paramPair));
+
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
-            // Semantic check
+
+            // Semantics
             Type paramType = token_keyword_to_type(token.type);
             paramPair->value.varType = paramType;
             if (isDeclared) {
+                // Check if parameter types from declaration match the ones from definition
                 list_next(&pair->value.paramList);
                 Type saved = list_get_active(&pair->value.paramList);
                 if (saved != paramType) {
@@ -344,8 +374,8 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
                     break;
                 }
             } else {
+                // For undeclared function add parameters to the list
                 ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
-
             }
 
             if (!nt_type()) {
@@ -361,12 +391,19 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
         default:
             // <fn_def_params> -> eps
             // there don't have to be any parameters
+
+            // Check if list of parameters is empty
+            list_next(&pair->value.paramList);
+            if (list_is_active(&pair->value.paramList)) {
+                status = ERR_SEMANTIC_DEF;
+                break;
+            }
+
             found = true;
             break;
     }
     return found;
 }
-
 
 bool nt_fn_returns(HTabPair *pair, bool declared) {
     bool found = false;
@@ -375,10 +412,26 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
         case TOKEN_COLON:
             // <fn_returns> -> TOKEN_COLON <type> <fn_returns_next>
             GET_NEW_TOKEN();
+
+            Type returnType = token_keyword_to_type(token.type);
+            if (declared) {
+                // Check if return types from declaration match the ones from definition
+                list_first(&pair->value.returnList);
+                Type saved = list_get_active(&pair->value.returnList);
+                if (saved != returnType) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+            }
+            else {
+                // For undeclared function add returns to the list
+                ASSERT_SUCCESS(list_append(&pair->value.returnList, token_keyword_to_type(token.type)));
+            }
+
             if (!nt_type()) {
                 break;
             }
-            if (!nt_fn_returns_next(pair, false)) {
+            if (!nt_fn_returns_next(pair, declared)) {
                 break;
             }
             found = true;
@@ -400,10 +453,26 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
         case TOKEN_COMMA:
             // <fn_returns_next> -> TOKEN_COMMA <type> <fn_returns_next>
             GET_NEW_TOKEN();
+
+            Type returnType = token_keyword_to_type(token.type);
+            if (declared) {
+                // Check if parameter types from declaration match the ones from definition
+                list_next(&pair->value.returnList);
+                Type saved = list_get_active(&pair->value.returnList);
+                if (saved != returnType) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+            }
+            else {
+                // For undeclared function add returns to the list
+                ASSERT_SUCCESS(list_append(&pair->value.returnList, token_keyword_to_type(token.type)));
+            }
+
             if (!nt_type()) {
                 break;
             }
-            if (!nt_fn_returns_next(pair, false)) {
+            if (!nt_fn_returns_next(pair, declared)) {
                 break;
             }
             found = true;
@@ -412,6 +481,14 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
         default:
             // <fn_returns_next> -> eps
             // function can be without return
+
+            // Check if list of returns is empty
+            list_next(&pair->value.returnList);
+            if (list_is_active(&pair->value.returnList)) {
+                status = ERR_SEMANTIC_DEF;
+                break;
+            }
+
             found = true;
             break;
     }

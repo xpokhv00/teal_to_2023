@@ -73,10 +73,112 @@ void symstack_destroy(SymStack* s)
     s->allocatedElements = 0;
 }
 
+// This function returns < or > or e or =
+// based on token which is stored on top of the stack and based on token which it recieves on begining
+// ********************************** BIG NOTE ***************************************************
+// THIS FUNCTION DOES NOT TAKE INTO ACCOUNT END OF THE EXPRESSION
+char check_table(Token *pToken, SymStack s)
+{
+    // deciding for empty stack
+    if (symstack_is_empty(&s))
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
+        if (pToken->type == TOKEN_PAR_L) return '<';
+        if (pToken->type == TOKEN_PAR_R) return 'e';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '<';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+    // deciding for + -
+    if ( symstack_top(&s) == (SymbolType)TOKEN_PLUS || symstack_top(&s) == (SymbolType)TOKEN_MINUS)
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
+        if (pToken->type == TOKEN_PAR_L) return '<';
+        if (pToken->type == TOKEN_PAR_R) return '>';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+
+    // deciding for */
+    if ( symstack_top(&s) == (SymbolType)TOKEN_MULTIPLY || symstack_top(&s) == (SymbolType)TOKEN_DIVIDE || symstack_top(&s) == (SymbolType)TOKEN_INT_DIVIDE)
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
+        if (pToken->type == TOKEN_PAR_L) return '<';
+        if (pToken->type == TOKEN_PAR_R) return '>';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+
+    // deciding for left par
+    if ( symstack_top(&s) == (SymbolType)TOKEN_PAR_L )
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
+        if (pToken->type == TOKEN_PAR_L) return '<';
+        if (pToken->type == TOKEN_PAR_R) return '=';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '<';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '<';
+    }
+
+    // deciding for right par
+    if ( symstack_top(&s) == (SymbolType)TOKEN_PAR_R)
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
+        if (pToken->type == TOKEN_PAR_L) return 'e';
+        if (pToken->type == TOKEN_PAR_R) return '>';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return 'e';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+
+    // deciding for number
+    if ( symstack_top(&s) == (SymbolType)TOKEN_INTEGER_LIT || symstack_top(&s) == (SymbolType)TOKEN_DOUBLE_LIT)
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
+        if (pToken->type == TOKEN_PAR_L) return 'e';
+        if (pToken->type == TOKEN_PAR_R) return '>';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return 'e';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+
+    // deciding for <= >= < >
+    if ( symstack_top(&s) == (SymbolType)TOKEN_LT || symstack_top(&s) == (SymbolType)TOKEN_GT || symstack_top(&s) == (SymbolType)TOKEN_GEQ || symstack_top(&s) == (SymbolType)TOKEN_LEQ)
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
+        if (pToken->type == TOKEN_PAR_L) return '<';
+        if (pToken->type == TOKEN_PAR_R) return '>';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+
+    //deciding for == !=
+    if ( symstack_top(&s) == (SymbolType)TOKEN_EQUALS || symstack_top(&s) == (SymbolType)TOKEN_NEQ)
+    {
+        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
+        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
+        if (pToken->type == TOKEN_PAR_L) return '<';
+        if (pToken->type == TOKEN_PAR_R) return '>';
+        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
+        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
+        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
+    }
+    return 'e';
+}
+
 
 bool nt_expr(Token *pToken)
 {
-    // TODO this is where you begin
 
     Status status;
 
@@ -103,8 +205,12 @@ bool nt_expr(Token *pToken)
     valid_tokens[14] = TOKEN_DOUBLE_LIT;
     valid_tokens[15] = TOKEN_INTEGER_LIT;
 
+    TokenType tmp;
 
-
+    // function uses token "NONE" as indetier of stack bottom
+    // function uses token "TOKEN_NIL" as indetier of handel
+    // function uses token "TOKEN_END" as identifier of correct expression
+    symstack_push(&s, (SymbolType) NONE);
     bool compatible = true;
     while (true)
     {
@@ -117,14 +223,42 @@ bool nt_expr(Token *pToken)
 
         if (compatible)
         {
-            symstack_push(&s, (SymbolType) pToken->type);
+            switch (check_table(pToken, s))
+            {
+                case '=':
+                    symstack_push(&s, (SymbolType) pToken->type);
+                    status = scanner_get_token(pToken);
+                    continue;
+                case '<':
+                    tmp = symstack_pop(&s);
+                    symstack_push(&s, (SymbolType)TOKEN_NIL);
+                    symstack_push(&s, (SymbolType)tmp);
+                    symstack_push(&s, (SymbolType)pToken->type);
+                    status = scanner_get_token(pToken);
+                    continue;
+                case '>':
+                    for (int i = s->top; i > 0; i --)
+                    {
+                        if (s->data[i] == TOKEN_NIL)
+                        {
+                            // TO DO
+                        }
+                    }
+                default :
+                    return false;
+            }
         }
         else
         {
             break;
         }
-        status = scanner_get_token(pToken);
     }
+
+    // cyklus bude podobny ako predosly, len v tomto cykle budeme vediet ze sa jedna o stav kedy  prisiel na vstup koniec vyrazu
+    //while (symstack_top(&s))
+
+
+
 
     symstack_destroy(&s);
     scanner_destroy_token(pToken);

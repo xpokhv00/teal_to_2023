@@ -252,7 +252,7 @@ bool nt_fn_def() {
 
             // Check if function is already declared
             HTabPair *fnPair = st_lookup(&st, token.str);
-            bool isDeclared = (fnPair != NULL);
+            bool isDeclared = fnPair != NULL;
             if (!isDeclared) {
                 // Adds function name into symtable
                 ASSERT_SUCCESS(st_add(&st, token, &fnPair));
@@ -382,7 +382,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
                 break;
             }
             // read another comma and parameter or eps
-            if (!nt_fn_def_params_next(pair, false)) {
+            if (!nt_fn_def_params_next(pair, isDeclared)) {
                 break;
             }
             found = true;
@@ -798,9 +798,18 @@ bool nt_fn_call() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:
+        case TOKEN_IDENTIFIER:;
             // <fn_call> -> TOKEN_IDENTIFIER TOKEN_PAR_L <fn_call_params> TOKEN_PAR_R
-            // TODO symtable lookup
+
+            // Check if function is already declared or defined
+            HTabPair *callPair = st_lookup(&st, token.str);
+            bool isDeclared = callPair != NULL;
+            if (!isDeclared) {
+                // Cannot call an undeclared function
+                status = ERR_SEMANTIC_DEF;
+                break;
+            }
+
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();

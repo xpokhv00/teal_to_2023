@@ -105,7 +105,6 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
     (*element)->htab_pair.value.paramList = paramList;
     (*element)->htab_pair.value.returnList = returnList;
     (*element)->htab_pair.value.varType = TYPE_NONE;
-    (*element)->htab_pair.key = key;
     (*element)->next = NULL;
 
     //returning new item pair
@@ -147,18 +146,16 @@ Status st_init(SymTab *st) {
     if (st->top == NULL) {
         return ERR_INTERNAL;
     }
-    st->top->readHigher = false;
     return SUCCESS;
 }
 
-Status st_push_frame(SymTab *st, bool transparent) {
+Status st_push_frame(SymTab *st) {
     HTab *next = st->top;
     st->top= htab_init();
     if (st->top == NULL) {
         return ERR_INTERNAL;
     }
 
-    st->top->readHigher = transparent;
     st->top->next = next;
     return SUCCESS;
 }
@@ -171,16 +168,17 @@ HTabPair *st_lookup(SymTab *st, const char *key) {
             return pair;
         }
         currentTable = currentTable->next;
-    } while (currentTable && currentTable->readHigher);
+    } while (currentTable);
     return NULL;
 }
 
-Status st_add(SymTab *st, const char *key, HTabPair **pair) {
-    if (st_lookup(st, key) != NULL) {
+Status st_add(SymTab *st, Token token, HTabPair **pair) {
+    if (st_lookup(st, token.str) != NULL) {
         return ERR_SEMANTIC_DEF;
     }
     else {
-        *pair = htab_insert(st->top, key);
+        *pair = htab_insert(st->top, token.str);
+        (*pair)->value.varType = token_type_to_type(token.type);
         return SUCCESS;
     }
 }
@@ -192,9 +190,8 @@ void st_pop_frame(SymTab *st) {
 }
 
 void st_destroy(SymTab *st) {
-    HTab *deleted = st->top;
     while (st->top) {
-        deleted = st->top;
+        HTab *deleted = st->top;
         st->top = st->top->next;
         htab_destroy(deleted);
     }

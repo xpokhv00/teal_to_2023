@@ -15,6 +15,7 @@
 static Token token;
 // if anything fails, it will be stored here
 static Status status;
+static SymTab st;
 
 
 #define GET_NEW_TOKEN() scanner_destroy_token(&token); \
@@ -25,19 +26,27 @@ if (status != SUCCESS) { break; }
 
 #define ASSERT_NT(nt_function_return) if (!(nt_function_return)) { break; }
 
+#define ASSERT_SUCCESS(fn_return) if ((status = (fn_return)) != SUCCESS) { break; }
+
 bool nt_prog();
 bool nt_prolog();
 bool nt_prog_body();
 
 bool nt_fn_decl();
-bool nt_fn_decl_params();
-bool nt_fn_decl_params_next();
+
+bool nt_fn_decl_params(HTabPair *pair);
+
+bool nt_fn_decl_params_next(HTabPair *pair);
 
 bool nt_fn_def();
-bool nt_fn_def_params();
-bool nt_fn_def_params_next();
-bool nt_fn_returns();
-bool nt_fn_returns_next();
+
+bool nt_fn_def_params(HTabPair *pair, bool isDeclared);
+
+bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared);
+
+bool nt_fn_returns(HTabPair *pair, bool declared);
+
+bool nt_fn_returns_next(HTabPair *pair, bool declared);
 bool nt_fn_body();
 
 bool nt_var_decl();
@@ -143,7 +152,8 @@ bool nt_fn_decl() {
         case TOKEN_GLOBAL:
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
-            // TODO semantic check, add into symbol table ...
+            HTabPair *pair;
+            ASSERT_SUCCESS(st_add(&st, token, &pair));
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
@@ -151,12 +161,12 @@ bool nt_fn_decl() {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
-            if (!nt_fn_decl_params()) {
+            if (!nt_fn_decl_params(pair)) {
                 break;
             }
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN();
-            if (!nt_fn_returns()) {
+            if (!nt_fn_returns(pair, false)) {
                 break;
             }
             // TODO semantic check with symbol table ...
@@ -170,7 +180,7 @@ bool nt_fn_decl() {
     return found;
 }
 
-bool nt_fn_decl_params() {
+bool nt_fn_decl_params(HTabPair *pair) {
     bool found = false;
 
     switch (token.type) {
@@ -178,8 +188,10 @@ bool nt_fn_decl_params() {
         case TOKEN_INTEGER_KW:
         case TOKEN_NUMBER_KW:
         case TOKEN_STRING_KW:
+        case TOKEN_NIL:;
+            ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             GET_NEW_TOKEN();
-            found = nt_fn_decl_params_next();
+            found = nt_fn_decl_params_next(pair);
             break;
 
         // <fn_decl_params> -> eps
@@ -191,20 +203,19 @@ bool nt_fn_decl_params() {
     return found;
 }
 
-bool nt_fn_decl_params_next() {
+bool nt_fn_decl_params_next(HTabPair *pair) {
     bool found = false;
 
     switch (token.type) {
         case TOKEN_COMMA:
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
-
+            ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             if (!nt_type()) {
                 break;
             }
-            // TODO semantic check for type
             // read another comma and parameter or eps
-            found = nt_fn_decl_params_next();
+            found = nt_fn_decl_params_next(pair);
             break;
 
         default:
@@ -229,17 +240,30 @@ bool nt_fn_def() {
             // <fn_returns> <fn_body> TOKEN_END
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
-            // TODO semantic check, add into symbol table ...
+            // Semantics
+            HTabPair *fnPair = st_lookup(&st, token.str);
+            bool isDeclared = fnPair != NULL;
+            if (!isDeclared) {
+                ASSERT_SUCCESS(st_add(&st, token, &fnPair));
+                fnPair = st_lookup(&st, token.str);
+            } else {
+                if (fnPair->value.defined) {
+                    status = ERR_SEMANTIC_DEF;
+                }
+            }
+            fnPair->value.defined = true;
+
             gen_print("LABEL %s\n", token.str);
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_fn_def_params());
-            // TODO semantic check of params
+            st_push_frame(&st);
+            ASSERT_NT(nt_fn_def_params(fnPair, isDeclared));
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_fn_returns());
+            ASSERT_NT(nt_fn_returns(fnPair, isDeclared));
             ASSERT_NT(nt_fn_body());
+            st_pop_frame(&st);
             ASSERT_TOKEN_TYPE(TOKEN_END);
             gen_print("RETURN\n");
             GET_NEW_TOKEN();
@@ -252,21 +276,35 @@ bool nt_fn_def() {
     return found;
 }
 
-bool nt_fn_def_params() {
+bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:
+        case TOKEN_IDENTIFIER:;
             // <fn_def_params> -> TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_def_params_next>
-            // TODO symtable lookup
+            HTabPair *paramPair;
+            ASSERT_SUCCESS(st_add(&st, token, &paramPair));
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
+            // Semantic check
+            Type paramType = token_keyword_to_type(token.type);
+            paramPair->value.varType = paramType;
+            if (isDeclared) {
+                list_first(&pair->value.paramList);
+                Type saved = list_get_active(&pair->value.paramList);
+                if (saved != paramType) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+            } else {
+                status = ERR_SEMANTIC_FUNC;
+            }
+
             if (!nt_type()) {
                 break;
             }
-            // TODO semantic check for correct type
-            if (!nt_fn_def_params_next()) {
+            if (!nt_fn_def_params_next(pair, isDeclared)) {
                 break;
             }
             found = true;
@@ -282,7 +320,7 @@ bool nt_fn_def_params() {
     return found;
 }
 
-bool nt_fn_def_params_next() {
+bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
@@ -290,16 +328,31 @@ bool nt_fn_def_params_next() {
             // <fn_def_params_next> -> TOKEN_COMMA TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            HTabPair *paramPair;
+            ASSERT_SUCCESS(st_add(&st, token, &paramPair));
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
+            // Semantic check
+            Type paramType = token_keyword_to_type(token.type);
+            paramPair->value.varType = paramType;
+            if (isDeclared) {
+                list_next(&pair->value.paramList);
+                Type saved = list_get_active(&pair->value.paramList);
+                if (saved != paramType) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+            } else {
+                ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
+
+            }
+
             if (!nt_type()) {
                 break;
             }
-            // TODO semantic check for type
-
             // read another comma and parameter or eps
-            if (!nt_fn_def_params_next()) {
+            if (!nt_fn_def_params_next(pair, false)) {
                 break;
             }
             found = true;
@@ -315,7 +368,7 @@ bool nt_fn_def_params_next() {
 }
 
 
-bool nt_fn_returns() {
+bool nt_fn_returns(HTabPair *pair, bool declared) {
     bool found = false;
 
     switch (token.type) {
@@ -325,7 +378,7 @@ bool nt_fn_returns() {
             if (!nt_type()) {
                 break;
             }
-            if (!nt_fn_returns_next()) {
+            if (!nt_fn_returns_next(pair, false)) {
                 break;
             }
             found = true;
@@ -340,7 +393,7 @@ bool nt_fn_returns() {
     return found;
 }
 
-bool nt_fn_returns_next() {
+bool nt_fn_returns_next(HTabPair *pair, bool declared) {
     bool found = false;
 
     switch (token.type) {
@@ -350,7 +403,7 @@ bool nt_fn_returns_next() {
             if (!nt_type()) {
                 break;
             }
-            if (!nt_fn_returns_next()) {
+            if (!nt_fn_returns_next(pair, false)) {
                 break;
             }
             found = true;
@@ -780,9 +833,11 @@ Status parser_run() {
         return status;
     }
 
+    st_init(&st);
     gen_init(stdout);
     bool valid = nt_prog();
     gen_destroy();
+    st_destroy(&st);
 
     if (status == SUCCESS && !valid) {
         char *fstring = "Syntax error on line %u:%u:\nUnexpected token `%s`\n\n";

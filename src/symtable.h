@@ -52,7 +52,6 @@ struct htab {
     HTabItem **htab_items;
     unsigned int arr_size;
     HTab *next;
-    bool readHigher;
 };
 
 struct symtab {
@@ -69,10 +68,10 @@ void htab_destroy(HTab *table);
 
 // Symtable functions (table of symbols)
 Status st_init(SymTab *st);
-Status st_push_frame(SymTab *st, bool transparent);
+Status st_push_frame(SymTab *st);
 HTabPair *st_lookup(SymTab *st, const char *key);
 void st_pop_frame(SymTab *st);
-Status st_add(SymTab *st, const char *key, HTabPair **pair);
+Status st_add(SymTab *st, Token token, HTabPair **pair);
 void st_destroy(SymTab *st);
 Type st_token_to_type(SymTab *st, Token token);
 

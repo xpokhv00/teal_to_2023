@@ -44,10 +44,10 @@ void gen_buffer_stop() {
     printer.buffer[0] = '\0'; // empty string
 }
 
-Status gen_print_internal(bool prepend, const char *format, ...) {
+Status gen_print(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    if (printer.buffering && !prepend) {
+    if (printer.buffering) {
         // reallocate if not enough space
         size_t n = printer.bufferSize - strlen(printer.buffer);
         if (n < BUFFER_MIN_FREE) {
@@ -66,20 +66,12 @@ Status gen_print_internal(bool prepend, const char *format, ...) {
     return SUCCESS;
 }
 
-Status gen_print(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    Status ret = gen_print_internal(false, format, args);
-    va_end(args);
-    return ret;
-}
-
 Status gen_prepend(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    Status ret = gen_print_internal(true, format, args);
+    vfprintf(stderr, format, args);
     va_end(args);
-    return ret;
+    return SUCCESS;
 }
 
 void gen_destroy() {

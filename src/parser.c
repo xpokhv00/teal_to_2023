@@ -230,6 +230,7 @@ bool nt_fn_def() {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             // TODO semantic check, add into symbol table ...
+            gen_print("LABEL %s\n", token.str);
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
@@ -240,6 +241,7 @@ bool nt_fn_def() {
             ASSERT_NT(nt_fn_returns());
             ASSERT_NT(nt_fn_body());
             ASSERT_TOKEN_TYPE(TOKEN_END);
+            gen_print("RETURN\n");
             GET_NEW_TOKEN();
             found = true;
             break;

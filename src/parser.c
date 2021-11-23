@@ -262,7 +262,7 @@ bool nt_fn_def() {
                     break;
                 }
             }
-            // Now the function is declared
+            // Now the function is defined
             fnPair->value.defined = true;
 
             gen_print("LABEL %s\n", token.str);
@@ -303,7 +303,7 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
         case TOKEN_IDENTIFIER:;
             // <fn_def_params> -> TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_def_params_next>
 
-            // Check for parameter name in symtable, add if not found
+            // Check for parameter name in symtable, add it if not found
             HTabPair *paramPair;
             ASSERT_SUCCESS(st_add(&st, token, &paramPair));
 
@@ -315,14 +315,13 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
             paramPair->value.varType = token_keyword_to_type(token.type);
             if (isDeclared) {
                 // Check if parameter types from declaration match the ones from definition
-
                 Type saved = list_get_active(&pair->value.paramList);
                 if (saved != paramPair->value.varType) {
                     status = ERR_SEMANTIC_FUNC;
                     break;
                 }
             } else {
-                // For undeclared function add parameters to the list
+                // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             }
 
@@ -340,7 +339,7 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
             // <fn_def_params> -> eps
             // there don't have to be any parameters
 
-            // Check if list of parameters is empty
+            // Check that the list is no longer active
             list_first(&pair->value.paramList);
             if (list_is_active(&pair->value.paramList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -362,7 +361,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
 
-            // Check for parameter name in symtable, add if not found
+            // Check for parameter name in symtable, add it if not found
             HTabPair *paramPair;
             ASSERT_SUCCESS(st_add(&st, token, &paramPair));
 
@@ -380,7 +379,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
                     break;
                 }
             } else {
-                // For undeclared function add parameters to the list
+                // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             }
 
@@ -398,7 +397,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
             // <fn_def_params> -> eps
             // there don't have to be any parameters
 
-            // Check if list of parameters is empty
+            // Check that the list is no longer active
             list_next(&pair->value.paramList);
             if (list_is_active(&pair->value.paramList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -422,7 +421,6 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
             Type returnType = token_keyword_to_type(token.type);
             if (declared) {
                 // Check if return types from declaration match the ones from definition
-
                 Type saved = list_get_active(&pair->value.returnList);
                 if (saved != returnType) {
                     status = ERR_SEMANTIC_FUNC;
@@ -430,7 +428,7 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
                 }
             }
             else {
-                // For undeclared function add returns to the list
+                // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.returnList, token_keyword_to_type(token.type)));
             }
 
@@ -447,8 +445,7 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
             // <fn_returns> -> eps
             // function can be without return
 
-
-            // Check if list of returns is empty
+            // Check that the list is no longer active
             if (list_is_active(&pair->value.returnList)) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
@@ -470,16 +467,17 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
 
             Type returnType = token_keyword_to_type(token.type);
             if (declared) {
-                // Check if parameter types from declaration match the ones from definition
                 list_next(&pair->value.returnList);
+                // Get type of the active element
                 Type saved = list_get_active(&pair->value.returnList);
+                // Check if parameter types from declaration match the ones from definition
                 if (saved != returnType) {
                     status = ERR_SEMANTIC_FUNC;
                     break;
                 }
             }
             else {
-                // For undeclared function add returns to the list
+                // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.returnList, token_keyword_to_type(token.type)));
             }
 
@@ -495,6 +493,8 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
         default:
             // <fn_returns_next> -> eps
             // function can be without return
+
+            // Check that the list is no longer active
             list_next(&pair->value.returnList);
             if (list_is_active(&pair->value.returnList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -813,7 +813,7 @@ bool nt_fn_call() {
         case TOKEN_IDENTIFIER:;
             // <fn_call> -> TOKEN_IDENTIFIER TOKEN_PAR_L <fn_call_params> TOKEN_PAR_R
 
-            // Check if function is already declared or defined
+            // Check whether the function is declared or defined
             HTabPair *callPair = st_lookup(&st, token.str);
             bool isDeclared = callPair != NULL;
             if (!isDeclared) {
@@ -851,9 +851,11 @@ bool nt_fn_call_params(HTabPair *callPair) {
         case TOKEN_STRING_LIT:
         case TOKEN_NIL:;
 
-            // Check if parameter types match
+            // Set activity to the first item
             list_first(&callPair->value.paramList);
+            // Get type of the first item in paramList
             Type saved = list_get_active(&callPair->value.paramList);
+            // Check if parameter type matches the one from definition / declaration
             if (!can_assign(saved, st_token_to_type(&st, token))) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
@@ -876,7 +878,7 @@ bool nt_fn_call_params(HTabPair *callPair) {
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
 
-            // Check that the list is not active
+            // Check that the list is no longer active
             list_first(&callPair->value.paramList);
             if (list_is_active(&callPair->value.paramList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -897,14 +899,15 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
 
-            // Check if parameter types match
+            // Set activity to the next item
             list_next(&callPair->value.paramList);
+            // Get type of the active item in paramList
             Type saved = list_get_active(&callPair->value.paramList);
+            // Check if parameter type matches the one from definition / declaration
             if (!can_assign(saved, st_token_to_type(&st, token))) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
             }
-
 
             // move the argument into the temporary frame
             gen_print("MOVE TF@%%param%d ", 2);
@@ -924,7 +927,7 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
 
-            // Check that the list is not active
+            // Check that the list is no longer active
             list_next(&callPair->value.paramList);
             if (list_is_active(&callPair->value.paramList)) {
                 status = ERR_SEMANTIC_FUNC;

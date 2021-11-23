@@ -51,7 +51,7 @@ int main() {
                 [SUCCESS] = "", // never happens
                 [ERR_LEXICAL] = "Lexical",
                 [ERR_SYNTAX] = "Syntax",
-                [ERR_SEMANTIC_DEF] = "Semantic - undefined variable / function redefinition (DEF)",
+                [ERR_SEMANTIC_DEF] = "Semantic - undefined variable / function, or attempted function / variable redefinition (DEF)",
                 [ERR_SEMANTIC_ASSIGN] = "Semantic - type incompatibility (ASSIGN)",
                 [ERR_SEMANTIC_FUNC] = "Semantic - wrong number / type of parameters / returns in function call (FUNC)",
                 [ERR_SEMANTIC_EXPR] = "Semantic - type incompatibility in arithmetic / string / relation expressions (EXPR)",

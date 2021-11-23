@@ -17,6 +17,7 @@ static Token token;
 static Status status;
 static SymTab st;
 
+static unsigned callNumber = 0;
 
 #define GET_NEW_TOKEN() scanner_destroy_token(&token); \
 status = scanner_get_token(&token); \
@@ -99,6 +100,8 @@ bool nt_prolog() {
             }
             GET_NEW_TOKEN();
 
+            gen_print("%s", includeCode);
+
             found = true;
             break;
 
@@ -122,13 +125,21 @@ bool nt_prog_body() {
             found = nt_fn_def() && nt_prog_body();
             break;
 
-        case TOKEN_IDENTIFIER:
+        case TOKEN_IDENTIFIER:;
             // <prog_body> -> <fn_call> <prog_body>
-            found = nt_fn_call() && nt_prog_body();
+            // the interpreter has to jump from call to call
+            // it has to skip the definitions inbetween
+            gen_print("LABEL %%start%u\n", callNumber);
+            callNumber++;
+            ASSERT_NT(nt_fn_call());
+            gen_print("JUMP %%start%u\n", callNumber);
+            ASSERT_NT(nt_prog_body());
             break;
 
         case TOKEN_EOF:
             // pravidlo <prog_body> -> eps
+            // The last label, after which the excution is ended
+            gen_print("LABEL %%start%u\n", callNumber);
             // At the end of program check if all declared functions were defined
             ASSERT_SUCCESS(st_check_fn_defined(&st));
             found = true;

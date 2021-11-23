@@ -19,6 +19,7 @@
 #include "types.h"
 #include "symtable.h"
 #include "generator.h"
+#include "include.h"
 
 #include <stdio.h>
 #include <stdbool.h>

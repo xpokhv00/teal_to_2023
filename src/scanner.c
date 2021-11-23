@@ -28,6 +28,7 @@ static unsigned characterCount;
 // if a letter is read after the token has ended, it is kept here
 // until the next reading
 static int nextLetter;
+static Token nextToken;
 
 #define SCAN_END() nextLetter = input; \
     pToken->str[str_index] = '\0'; \
@@ -39,6 +40,7 @@ Status scanner_init(FILE *in) {
     lineCount = 1;
     characterCount = 0;
     nextLetter = EOF;
+    nextToken.type = NONE;
     return SUCCESS;
 }
 
@@ -46,11 +48,19 @@ Status scanner_get_token(Token *pToken) {
     unsigned str_index;
     unsigned allocated_length = 0;
 
+    // check if there is token returned with scanner_unget_token()
+    if (nextToken.type != NONE) {
+        *pToken = nextToken;
+        nextToken.type = NONE;
+        return SUCCESS;
+    }
+
+    // initialize everything
     ScannerState state = SCANNER_START;
     int input;
-
     pToken->str = NULL;
 
+    // start the reading cycle
     while (true) {
         if (nextLetter != EOF) {
             input = nextLetter;
@@ -472,6 +482,10 @@ Status scanner_get_token(Token *pToken) {
         }
         pToken->str[str_index++] = (char)input;
     }
+}
+
+void scanner_unget_token(Token token) {
+    nextToken = token;
 }
 
 void scanner_destroy_token(Token *pToken) {

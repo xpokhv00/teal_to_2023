@@ -61,7 +61,6 @@ bool nt_r_value_list(bool emptyValid);
 bool nt_r_value_list_next();
 bool nt_l_value_list();
 bool nt_l_value_list_next();
-bool nt_l_value();
 bool nt_fn_call();
 bool nt_fn_call_params(HTabPair *callPair);
 bool nt_fn_call_params_next(HTabPair *callPair);
@@ -518,11 +517,23 @@ bool nt_fn_body() {
             found = true;
             break;
 
-        case TOKEN_IDENTIFIER:
+        case TOKEN_IDENTIFIER:;
             // assignment or function call
             // <fn_body> -> nt_l_value_list TOKEN_ASSIGN <expr> <fn_body>
-            ASSERT_NT(nt_assignment());
-            ASSERT_NT(nt_fn_body());
+
+            // get next token to know, what we're dealing with
+            Token nextToken;
+            ASSERT_SUCCESS(scanner_get_token(&nextToken));
+            bool isFunction = (nextToken.type == TOKEN_PAR_L);
+            scanner_unget_token(nextToken);
+
+            if (isFunction) {
+                ASSERT_NT(nt_fn_call());
+                ASSERT_NT(nt_fn_body());
+            } else {
+                ASSERT_NT(nt_assignment());
+                ASSERT_NT(nt_fn_body());
+            }
             found = true;
             break;
 
@@ -606,23 +617,18 @@ bool nt_assignment() {
             ASSERT_NT(nt_l_value_list());
             ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
             GET_NEW_TOKEN();
-            // decide between function call and list of expressions
-            bool expr = false;
-            if (token.type == TOKEN_INTEGER_LIT
-                || token.type == TOKEN_DOUBLE_LIT
-                || token.type == TOKEN_STRING_LIT
-                || token.type == TOKEN_NIL) {
-                expr = true;
-            } else {
-                ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
-                // check if the identifier is a variable or a function
-                // expr = TODO check in symbol table i guess
-            }
 
-            if (expr) {
-                ASSERT_NT(nt_r_value_list(false));
-            } else {
+            // check if the identifier is a variable or a function
+            // get next token to know, what we're dealing with
+            Token nextToken;
+            ASSERT_SUCCESS(scanner_get_token(&nextToken));
+            bool isFunction = (nextToken.type == TOKEN_PAR_L);
+            scanner_unget_token(nextToken);
+
+            if (isFunction) {
                 ASSERT_NT(nt_fn_call());
+            } else {
+                ASSERT_NT(nt_r_value_list(false));
             }
 
             found = true;
@@ -763,7 +769,8 @@ bool nt_l_value_list() {
 
     switch (token.type) {
         case TOKEN_IDENTIFIER:
-            ASSERT_NT(nt_l_value());
+            // todo semantics
+            GET_NEW_TOKEN();
             ASSERT_NT(nt_l_value_list_next());
             found = true;
             break;
@@ -780,31 +787,19 @@ bool nt_l_value_list_next() {
     switch (token.type) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_l_value());
-            found = true;
-            break;
-
-        default:
-            break;
-    }
-    return found;
-}
-
-bool nt_l_value() {
-    bool found = false;
-
-    switch (token.type) {
-        case TOKEN_IDENTIFIER:
-            // TODO semantics
+            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             GET_NEW_TOKEN();
+            ASSERT_NT(nt_l_value_list_next());
             found = true;
             break;
 
         default:
+            found = true;
             break;
     }
     return found;
 }
+
 
 bool nt_fn_call() {
     bool found = false;

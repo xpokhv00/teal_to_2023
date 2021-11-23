@@ -137,11 +137,9 @@ typedef enum {
 } ScannerState;
 
 Status scanner_init(FILE *in);
-
 Status scanner_get_token(Token *pToken);
-
+void scanner_unget_token(Token token);
 void scanner_destroy_token(Token *pToken);
-
 Status scanner_destroy();
 
 #endif // SCANNER_H

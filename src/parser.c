@@ -33,17 +33,11 @@ bool nt_prolog();
 bool nt_prog_body();
 
 bool nt_fn_decl();
-
 bool nt_fn_decl_params(HTabPair *pair);
-
 bool nt_fn_decl_params_next(HTabPair *pair);
-
 bool nt_fn_def();
-
 bool nt_fn_def_params(HTabPair *pair, bool isDeclared);
-
 bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared);
-
 bool nt_fn_returns(HTabPair *pair, bool declared);
 
 bool nt_fn_returns_next(HTabPair *pair, bool declared);
@@ -325,6 +319,13 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
                 // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             }
+
+            // move the parameter to newly declared local variable
+            gen_print("DEFVAR LF@$%u\n", paramPair->value.ID);
+            gen_print("MOVE LF@$%u TF@%%param%u\n",
+                      paramPair->value.ID,
+                      list_active_index(&pair->value.paramList)
+                      );
 
             if (!nt_type()) {
                 break;
@@ -876,7 +877,7 @@ bool nt_fn_call_params(HTabPair *callPair) {
             }
 
             // move the argument into the temporary frame
-            gen_print("MOVE TF@%%param%d ", 2); //list_active_index()); todo
+            gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
             if (token.type == TOKEN_IDENTIFIER) {
                 gen_print("LF@%s", token.str);
             } else {
@@ -924,7 +925,7 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
             }
 
             // move the argument into the temporary frame
-            gen_print("MOVE TF@%%param%d ", 2);
+            gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
             if (token.type == TOKEN_IDENTIFIER) {
                 gen_print("LF@%s", token.str);
             } else {

@@ -161,6 +161,7 @@ Status st_init(SymTab *st) {
     if (st->top == NULL) {
         return ERR_INTERNAL;
     }
+    st->idCounter = 0;
     return SUCCESS;
 }
 
@@ -194,6 +195,7 @@ Status st_add(SymTab *st, Token token, HTabPair **pair) {
     else {
         *pair = htab_insert(st->top, token.str);
         (*pair)->value.varType = token_literal_to_type(token.type);
+        (*pair)->value.ID = st->idCounter++;
         return SUCCESS;
     }
 }

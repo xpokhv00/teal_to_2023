@@ -11,7 +11,7 @@
 
 #include "types.h"
 
-Type token_type_to_type(TokenType tt) {
+Type token_literal_to_type(TokenType tt) {
     switch (tt) {
         case TOKEN_INTEGER_LIT:
             return INTEGER;
@@ -111,4 +111,17 @@ unsigned list_active_index(TypeList *list) {
         count++;
     }
     return count;
+}
+
+bool can_assign(Type dst, Type src) {
+    if (dst == src) {
+        return true;
+    }
+    if (dst == NUMBER && src == INTEGER) {
+        return true;
+    }
+    if (src == NIL) {
+        return true;
+    }
+    return false;
 }

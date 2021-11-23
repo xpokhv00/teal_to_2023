@@ -178,7 +178,7 @@ Status st_add(SymTab *st, Token token, HTabPair **pair) {
     }
     else {
         *pair = htab_insert(st->top, token.str);
-        (*pair)->value.varType = token_type_to_type(token.type);
+        (*pair)->value.varType = token_literal_to_type(token.type);
         return SUCCESS;
     }
 }
@@ -198,7 +198,7 @@ void st_destroy(SymTab *st) {
 }
 
 Type st_token_to_type(SymTab *st, Token token) {
-    Type type = token_type_to_type(token.type);
+    Type type = token_literal_to_type(token.type);
     if (type != TYPE_NONE) {
         return type;
     }

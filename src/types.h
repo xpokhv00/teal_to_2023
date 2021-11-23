@@ -37,7 +37,7 @@ typedef struct {
 } TypeList;
 
 Type token_keyword_to_type(TokenType tt);
-Type token_type_to_type(TokenType tt);
+Type token_literal_to_type(TokenType tt);
 
 TypeList list_init();
 Status list_append(TypeList *list, Type type);
@@ -47,5 +47,6 @@ bool list_is_active(TypeList *list);
 Type list_get_active(TypeList *list);
 void list_destroy(TypeList *list);
 unsigned list_active_index(TypeList *list);
+bool can_assign(Type dst, Type src);
 
 #endif //TYPES_H

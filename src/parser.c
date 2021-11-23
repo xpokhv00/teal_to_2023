@@ -62,12 +62,10 @@ bool nt_r_value_list_next();
 bool nt_l_value_list();
 bool nt_l_value_list_next();
 bool nt_l_value();
-
 bool nt_fn_call();
-bool nt_fn_call_params();
-bool nt_fn_call_params_next();
+bool nt_fn_call_params(HTabPair *callPair);
+bool nt_fn_call_params_next(HTabPair *callPair);
 bool nt_type();
-
 
 
 bool nt_prog() {
@@ -313,13 +311,13 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
 
-            Type paramType = token_keyword_to_type(token.type);
-            paramPair->value.varType = paramType;
+            list_first(&pair->value.paramList);
+            paramPair->value.varType = token_keyword_to_type(token.type);
             if (isDeclared) {
                 // Check if parameter types from declaration match the ones from definition
-                list_first(&pair->value.paramList);
+
                 Type saved = list_get_active(&pair->value.paramList);
-                if (saved != paramType) {
+                if (saved != paramPair->value.varType) {
                     status = ERR_SEMANTIC_FUNC;
                     break;
                 }
@@ -341,6 +339,14 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
         default:
             // <fn_def_params> -> eps
             // there don't have to be any parameters
+
+            // Check if list of parameters is empty
+            list_first(&pair->value.paramList);
+            if (list_is_active(&pair->value.paramList)) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
+
             found = true;
             break;
     }
@@ -364,14 +370,12 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
 
-            // Semantics
-            Type paramType = token_keyword_to_type(token.type);
-            paramPair->value.varType = paramType;
+            paramPair->value.varType = token_keyword_to_type(token.type);
             if (isDeclared) {
                 // Check if parameter types from declaration match the ones from definition
                 list_next(&pair->value.paramList);
                 Type saved = list_get_active(&pair->value.paramList);
-                if (saved != paramType) {
+                if (saved != paramPair->value.varType) {
                     status = ERR_SEMANTIC_FUNC;
                     break;
                 }
@@ -397,7 +401,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
             // Check if list of parameters is empty
             list_next(&pair->value.paramList);
             if (list_is_active(&pair->value.paramList)) {
-                status = ERR_SEMANTIC_DEF;
+                status = ERR_SEMANTIC_FUNC;
                 break;
             }
 
@@ -409,7 +413,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
 
 bool nt_fn_returns(HTabPair *pair, bool declared) {
     bool found = false;
-
+    list_first(&pair->value.returnList);
     switch (token.type) {
         case TOKEN_COLON:
             // <fn_returns> -> TOKEN_COLON <type> <fn_returns_next>
@@ -418,7 +422,7 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
             Type returnType = token_keyword_to_type(token.type);
             if (declared) {
                 // Check if return types from declaration match the ones from definition
-                list_first(&pair->value.returnList);
+
                 Type saved = list_get_active(&pair->value.returnList);
                 if (saved != returnType) {
                     status = ERR_SEMANTIC_FUNC;
@@ -442,6 +446,14 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
         default:
             // <fn_returns> -> eps
             // function can be without return
+
+
+            // Check if list of returns is empty
+            if (list_is_active(&pair->value.returnList)) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
+
             found = true;
             break;
     }
@@ -483,11 +495,9 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
         default:
             // <fn_returns_next> -> eps
             // function can be without return
-
-            // Check if list of returns is empty
             list_next(&pair->value.returnList);
             if (list_is_active(&pair->value.returnList)) {
-                status = ERR_SEMANTIC_DEF;
+                status = ERR_SEMANTIC_FUNC;
                 break;
             }
 
@@ -816,7 +826,7 @@ bool nt_fn_call() {
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
             gen_print("CREATEFRAME\n");
-            if (!nt_fn_call_params()) {
+            if (!nt_fn_call_params(callPair)) {
                 break;
             }
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
@@ -830,7 +840,7 @@ bool nt_fn_call() {
     return found;
 }
 
-bool nt_fn_call_params() {
+bool nt_fn_call_params(HTabPair *callPair) {
     bool found = false;
 
     switch (token.type) {
@@ -839,8 +849,15 @@ bool nt_fn_call_params() {
         case TOKEN_INTEGER_LIT:
         case TOKEN_DOUBLE_LIT:
         case TOKEN_STRING_LIT:
-        case TOKEN_NIL:
-            // TODO semantic
+        case TOKEN_NIL:;
+
+            // Check if parameter types match
+            list_first(&callPair->value.paramList);
+            Type saved = list_get_active(&callPair->value.paramList);
+            if (!can_assign(saved, st_token_to_type(&st, token))) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
 
             // move the argument into the temporary frame
             gen_print("MOVE TF@%%param%d ", 2); //list_active_index()); todo
@@ -852,19 +869,27 @@ bool nt_fn_call_params() {
             gen_print("\n");
 
             GET_NEW_TOKEN();
-            found = nt_fn_call_params_next();
+            found = nt_fn_call_params_next(callPair);
             break;
 
         default:
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
+
+            // Check that the list is not active
+            list_first(&callPair->value.paramList);
+            if (list_is_active(&callPair->value.paramList)) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
+
             found = true;
             break;
     }
     return found;
 }
 
-bool nt_fn_call_params_next() {
+bool nt_fn_call_params_next(HTabPair *callPair) {
     bool found = false;
 
     switch (token.type) {
@@ -872,19 +897,14 @@ bool nt_fn_call_params_next() {
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
 
-            if (token.type == TOKEN_IDENTIFIER) {
-                // TODO semantic checks
-            } else {
-                if (token.type == TOKEN_INTEGER_LIT
-                || token.type == TOKEN_DOUBLE_LIT
-                || token.type == TOKEN_STRING_LIT
-                || token.type == TOKEN_NIL){
-                    // check type
-                } else {
-                    // wrong token
-                    break;
-                }
+            // Check if parameter types match
+            list_next(&callPair->value.paramList);
+            Type saved = list_get_active(&callPair->value.paramList);
+            if (!can_assign(saved, st_token_to_type(&st, token))) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
             }
+
 
             // move the argument into the temporary frame
             gen_print("MOVE TF@%%param%d ", 2);
@@ -897,12 +917,20 @@ bool nt_fn_call_params_next() {
 
             GET_NEW_TOKEN();
             // read another comma and parameter or eps
-            found = nt_fn_call_params_next();
+            found = nt_fn_call_params_next(callPair);
             break;
 
         default:
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
+
+            // Check that the list is not active
+            list_next(&callPair->value.paramList);
+            if (list_is_active(&callPair->value.paramList)) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
+
             found = true;
             break;
     }

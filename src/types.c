@@ -113,6 +113,16 @@ unsigned list_active_index(TypeList *list) {
     return count;
 }
 
+unsigned list_count(TypeList *list) {
+    unsigned i = 0;
+    TypeListItem *current = list->first;
+    while (current != NULL) {
+        current = current->next;
+        i++;
+    }
+    return i;
+}
+
 bool can_assign(Type dst, Type src) {
     if (dst == src) {
         return true;

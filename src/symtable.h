@@ -63,6 +63,7 @@ HTab *htab_init();
 size_t htab_hash_function(HTabKey str);
 HTabPair *htab_find(HTab *table, HTabKey key);
 HTabPair *htab_insert(HTab *table, HTabKey key);
+bool htab_check_fn_define(const HTab *t);
 void htab_clear(HTab *table);
 void htab_destroy(HTab *table);
 
@@ -74,5 +75,6 @@ void st_pop_frame(SymTab *st);
 Status st_add(SymTab *st, Token token, HTabPair **pair);
 void st_destroy(SymTab *st);
 Type st_token_to_type(SymTab *st, Token token);
+Status st_check_fn_defined(SymTab *st);
 
 #endif // SYMTABLE_H

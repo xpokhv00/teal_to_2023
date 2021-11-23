@@ -111,6 +111,21 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
     return (&(*element)->htab_pair);
 }
 
+// Checks if declared function has been defined
+bool htab_check_fn_define(const HTab *t) {
+    for (size_t i=0; i < t->arr_size; i++) {
+        HTabItem *item = t->htab_items[i];
+
+        while (item != NULL) {
+            if (item->htab_pair.value.defined == false) {
+                return false;
+            }
+            item = item->next;
+        }
+    }
+    return true;
+}
+
 // Deletes all elements of hash table, an empty allocated table is left behind
 void htab_clear(HTab *table) {
     HTabItem *temp_element;
@@ -209,4 +224,12 @@ Type st_token_to_type(SymTab *st, Token token) {
     }
 
     return TYPE_NONE;
+}
+
+// Checks if all declared functions are defined
+Status st_check_fn_defined(SymTab *st) {
+    if (htab_check_fn_define(st->top)) {
+        return SUCCESS;
+    }
+    return ERR_SEMANTIC_DEF;
 }

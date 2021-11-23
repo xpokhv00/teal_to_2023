@@ -129,6 +129,8 @@ bool nt_prog_body() {
 
         case TOKEN_EOF:
             // pravidlo <prog_body> -> eps
+            // At the end of program check if all declared functions were defined
+            ASSERT_SUCCESS(st_check_fn_defined(&st));
             found = true;
             break;
 
@@ -565,6 +567,21 @@ bool nt_var_decl() {
         case TOKEN_LOCAL:
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+
+            // Checks if identifier already exists in symtable
+            // If not creates one
+            HTabPair *varPair = st_lookup(&st, token.str);
+            bool isDeclared = varPair != NULL;
+            if (!isDeclared) {
+                // Adds variable name into symtable
+                ASSERT_SUCCESS(st_add(&st, token, &varPair));
+                varPair = st_lookup(&st, token.str);
+            } else {
+                // Variable cannot be declared more than once
+                status = ERR_SEMANTIC_DEF;
+                break;
+            }
+
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
@@ -587,6 +604,8 @@ bool nt_var_decl_assign() {
             GET_NEW_TOKEN();
             // This could be an expression or function call
             bool expr = false;
+
+            // pak zmazat
             if (token.type == TOKEN_INTEGER_LIT
                 || token.type == TOKEN_DOUBLE_LIT
                 || token.type == TOKEN_STRING_LIT

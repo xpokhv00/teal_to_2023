@@ -237,9 +237,9 @@ bool nt_expr(Token *pToken)
                     status = scanner_get_token(pToken);
                     continue;
                 case '>':
-                    for (int i = s->top; i > 0; i --)
+                    for (int i = s.top; i > 0; i --)
                     {
-                        if (s->data[i] == TOKEN_NIL)
+                        if (s.data[i] == TOKEN_NIL)
                         {
                             // TO DO
                         }

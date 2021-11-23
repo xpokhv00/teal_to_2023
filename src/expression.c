@@ -79,8 +79,18 @@ void symstack_destroy(SymStack* s)
 // THIS FUNCTION DOES NOT TAKE INTO ACCOUNT END OF THE EXPRESSION
 char check_table(Token *pToken, SymStack s)
 {
+    TokenType comp;
+    // if top of the stack is TOKEN_ENED aka valid expression
+    if (symstack_top(&s) == TOKEN_END)
+    {
+        comp = s.data[s.top -1];
+    }
+    else
+    {
+        comp = symstack_top(&s);
+    }
     // deciding for empty stack
-    if (symstack_is_empty(&s))
+    if (comp == (SymbolType)NONE)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
@@ -91,7 +101,7 @@ char check_table(Token *pToken, SymStack s)
         if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
     }
     // deciding for + -
-    if ( symstack_top(&s) == (SymbolType)TOKEN_PLUS || symstack_top(&s) == (SymbolType)TOKEN_MINUS)
+    if ( comp == (SymbolType)TOKEN_PLUS || comp == (SymbolType)TOKEN_MINUS)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
@@ -103,7 +113,7 @@ char check_table(Token *pToken, SymStack s)
     }
 
     // deciding for */
-    if ( symstack_top(&s) == (SymbolType)TOKEN_MULTIPLY || symstack_top(&s) == (SymbolType)TOKEN_DIVIDE || symstack_top(&s) == (SymbolType)TOKEN_INT_DIVIDE)
+    if ( comp == (SymbolType)TOKEN_MULTIPLY || comp == (SymbolType)TOKEN_DIVIDE || comp == (SymbolType)TOKEN_INT_DIVIDE)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
@@ -115,7 +125,7 @@ char check_table(Token *pToken, SymStack s)
     }
 
     // deciding for left par
-    if ( symstack_top(&s) == (SymbolType)TOKEN_PAR_L )
+    if ( comp == (SymbolType)TOKEN_PAR_L )
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
@@ -127,7 +137,7 @@ char check_table(Token *pToken, SymStack s)
     }
 
     // deciding for right par
-    if ( symstack_top(&s) == (SymbolType)TOKEN_PAR_R)
+    if ( comp == (SymbolType)TOKEN_PAR_R)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
@@ -139,7 +149,7 @@ char check_table(Token *pToken, SymStack s)
     }
 
     // deciding for number
-    if ( symstack_top(&s) == (SymbolType)TOKEN_INTEGER_LIT || symstack_top(&s) == (SymbolType)TOKEN_DOUBLE_LIT)
+    if ( comp == (SymbolType)TOKEN_INTEGER_LIT || comp == (SymbolType)TOKEN_DOUBLE_LIT)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
@@ -151,7 +161,7 @@ char check_table(Token *pToken, SymStack s)
     }
 
     // deciding for <= >= < >
-    if ( symstack_top(&s) == (SymbolType)TOKEN_LT || symstack_top(&s) == (SymbolType)TOKEN_GT || symstack_top(&s) == (SymbolType)TOKEN_GEQ || symstack_top(&s) == (SymbolType)TOKEN_LEQ)
+    if ( comp == (SymbolType)TOKEN_LT || comp == (SymbolType)TOKEN_GT || comp == (SymbolType)TOKEN_GEQ || comp == (SymbolType)TOKEN_LEQ)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
@@ -163,7 +173,7 @@ char check_table(Token *pToken, SymStack s)
     }
 
     //deciding for == !=
-    if ( symstack_top(&s) == (SymbolType)TOKEN_EQUALS || symstack_top(&s) == (SymbolType)TOKEN_NEQ)
+    if ( comp == (SymbolType)TOKEN_EQUALS || comp == (SymbolType)TOKEN_NEQ)
     {
         if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
         if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
@@ -175,6 +185,11 @@ char check_table(Token *pToken, SymStack s)
     }
     return 'e';
 }
+
+/* **********************************************************************************************************************
+ *
+ *  **********************************************************************************************************************
+ */
 
 
 bool nt_expr(Token *pToken)
@@ -208,7 +223,7 @@ bool nt_expr(Token *pToken)
     TokenType tmp;
 
     // function uses token "NONE" as indetier of stack bottom
-    // function uses token "TOKEN_NIL" as indetier of handel
+    // function uses token "TOKEN_NIL" as indetier of handle
     // function uses token "TOKEN_END" as identifier of correct expression
     symstack_push(&s, (SymbolType) NONE);
     bool compatible = true;
@@ -227,22 +242,63 @@ bool nt_expr(Token *pToken)
             {
                 case '=':
                     symstack_push(&s, (SymbolType) pToken->type);
+
                     status = scanner_get_token(pToken);
                     continue;
                 case '<':
-                    tmp = symstack_pop(&s);
-                    symstack_push(&s, (SymbolType)TOKEN_NIL);
-                    symstack_push(&s, (SymbolType)tmp);
-                    symstack_push(&s, (SymbolType)pToken->type);
+                    if (symstack_top(&s) == (SymbolType)TOKEN_END)
+                    {
+                        tmp = symstack_pop(&s);
+                        symstack_push(&s, (SymbolType)TOKEN_NIL);
+                        symstack_push(&s, (SymbolType)tmp);
+                        symstack_push(&s, (SymbolType)pToken->type);
+                    }
+                    else
+                    {
+                        symstack_push(&s, (SymbolType)TOKEN_NIL);
+                        symstack_push(&s, (SymbolType)pToken->type);
+                    }
+
                     status = scanner_get_token(pToken);
                     continue;
                 case '>':
-                    for (int i = s.top; i > 0; i --)
+                    if (s.data[s.top - 1] == (SymbolType)TOKEN_NIL && (s.data[s.top] == (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top] == (SymbolType)TOKEN_INTEGER_LIT) )
                     {
-                        if (s.data[i] == TOKEN_NIL)
+                        symstack_pop(&s);
+                        symstack_pop(&s);
+                        symstack_push(&s, (SymbolType) TOKEN_END);
+                    }
+                    else if (s.data[s.top - 3] == (SymbolType)TOKEN_NIL)
+                    {
+                        if (s.data[s.top - 2] == (SymbolType)TOKEN_PAR_L && s.data[s.top - 1] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_PAR_R)
                         {
-                            // TO DO
+                            symstack_pop(&s);
+                            symstack_pop(&s);
+                            symstack_pop(&s);
+                            symstack_pop(&s);
+                            symstack_push(&s, (SymbolType) TOKEN_END);
                         }
+                        else if (s.data[s.top - 2] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_END)
+                        {
+                            if (s.data[s.top -1] == (SymbolType)TOKEN_PAR_R || s.data[s.top -1] == (SymbolType)TOKEN_PAR_L ||
+                            s.data[s.top -1] ==  (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top -1] == (SymbolType)TOKEN_INTEGER_LIT)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                symstack_pop(&s);
+                                symstack_pop(&s);
+                                symstack_pop(&s);
+                                symstack_pop(&s);
+                                symstack_push(&s, (SymbolType) TOKEN_END);
+                            }
+                        }
+
+                    }                                 
+                    else
+                    {
+                        return false;
                     }
                 default :
                     return false;
@@ -254,11 +310,55 @@ bool nt_expr(Token *pToken)
         }
     }
 
-    // cyklus bude podobny ako predosly, len v tomto cykle budeme vediet ze sa jedna o stav kedy  prisiel na vstup koniec vyrazu
-    //while (symstack_top(&s))
+    while (true)
+    {
+        if (symstack_top(&s) == (SymbolType)NONE || (s.data[s.top - 1] == (SymbolType)NONE && symstack_top(&s) == (SymbolType)TOKEN_END))
+        {
+            break;
+        }
+        if (symstack_top(&s) == (SymbolType)TOKEN_PAR_L)
+        {
+            return false;
+        }
 
-
-
+        if (s.data[s.top - 1] == (SymbolType)TOKEN_NIL && (s.data[s.top] == (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top] == (SymbolType)TOKEN_INTEGER_LIT) )
+        {
+            symstack_pop(&s);
+            symstack_pop(&s);
+            symstack_push(&s, (SymbolType) TOKEN_END);
+        }
+        else if (s.data[s.top - 3] == (SymbolType)TOKEN_NIL)
+        {
+            if (s.data[s.top - 2] == (SymbolType)TOKEN_PAR_L && s.data[s.top - 1] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_PAR_R)
+            {
+                symstack_pop(&s);
+                symstack_pop(&s);
+                symstack_pop(&s);
+                symstack_pop(&s);
+                symstack_push(&s, (SymbolType) TOKEN_END);
+            }
+            else if (s.data[s.top - 2] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_END)
+            {
+                if (s.data[s.top -1] == (SymbolType)TOKEN_PAR_R || s.data[s.top -1] == (SymbolType)TOKEN_PAR_L ||
+                s.data[s.top -1] ==  (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top -1] == (SymbolType)TOKEN_INTEGER_LIT)
+                {
+                    return false;
+                }
+                else
+                {
+                    symstack_pop(&s);
+                    symstack_pop(&s);
+                    symstack_pop(&s);
+                    symstack_pop(&s);
+                    symstack_push(&s, (SymbolType) TOKEN_END);
+                }
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     symstack_destroy(&s);
     scanner_destroy_token(pToken);

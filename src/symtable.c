@@ -101,6 +101,7 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
     TypeList paramList = list_init();
     TypeList returnList = list_init();
 
+    (*element)->htab_pair.value.specialFn = false;
     (*element)->htab_pair.value.defined = false;
     (*element)->htab_pair.value.paramList = paramList;
     (*element)->htab_pair.value.returnList = returnList;

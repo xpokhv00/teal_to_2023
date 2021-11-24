@@ -163,7 +163,8 @@ SymbolType tokentype_to_symboltype(TokenType tt) {
 
         case TOKEN_PAR_R:
             return S_PARR;
-
+        case TOKEN_GET_LENGTH:
+            return S_GETLEN;
         default:
             return S_NONE;
     }
@@ -194,6 +195,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_MULDIV:
                 case S_PARL:
                 case S_VALUE:
+                case S_GETLEN:
                     return '<';
                 default:
                     return 'e';
@@ -210,6 +212,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                     return '>';
                 case S_PARL:
                 case S_VALUE:
+                case S_GETLEN:
                     return '<';
                 default:
                     return 'e';
@@ -220,12 +223,14 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
-                case S_PARR:
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                case S_GETLEN:
                     return '<';
+                case S_PARR:
+                    return '=';
                 default:
                     return 'e';
             }
@@ -261,11 +266,14 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
-                case S_PARR:
                 case S_VALUE:
+                case S_GETLEN:
+                    return '<';
+                case S_PARR:
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                    return '>';
                 default:
                     return 'e';
             }
@@ -275,14 +283,35 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
+                case S_VALUE:
+                case S_COMPARE:
+                case S_GETLEN:
+                    return '<';
+                case S_PARR:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
+                default:
+                    return 'e';
+            }
+
+        case S_GETLEN:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
                 case S_PARR:
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
+                case S_GETLEN:
                 case S_EMPTY:
+                    return '>';
+                case S_PARL:
+                    return '>';
                 default:
                     return 'e';
             }
+
 
         case S_EMPTY:
             switch (in) {
@@ -292,6 +321,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
+                case S_GETLEN:
                     return '<';
                 default:
                     return 'e';
@@ -305,7 +335,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
 void reduce_value(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
-    gen_print("PUSH ");
+    gen_print("PUSHS ");
     gen_print_value(x.token, st);// TODO all the type checks and code generation
     gen_print("\n");
     symstack_push(s, GENERIC_EXPR);
@@ -354,12 +384,14 @@ bool symstack_reduce(SymStack *s) {
     // It is easier to match them to stack top
     // This table is dependent on zero initialization of rules, that are not specified
     static const Rule ruleTable[] = {
+            {.to={S_EXPR, S_GETLEN}, .fn=reduce_placeholder},
             {.to={S_VALUE}, .fn=reduce_value},
+            {.to={S_PARR, S_EXPR, S_PARL}, .fn=reduce_placeholder},
             {.to={S_EXPR, S_ADDSUB, S_EXPR}, .fn=reduce_addsub},
             {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
-            {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},
-            {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_placeholder},
-
+            {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},   // TO DO idk if this ever happens
+            {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_placeholder},
+            {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_placeholder},
     };
     int numRules = sizeof(ruleTable) / sizeof(Rule);
 
@@ -391,7 +423,10 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
 
     symstack_push(&s, EMPTY_SYMBOL);
 
-    while (true) {
+    bool ret = false;
+    bool cont = true;
+
+    while (cont) {
         Symbol stackTopTerminal = symstack_top_terminal(&s);
         Symbol inputTerminal = token_to_symbol(*pToken, st);
 
@@ -402,6 +437,7 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
         if ((inputTerminal.symbolType == S_EMPTY)
             && (stackTopTerminal.symbolType == S_EMPTY)) {
             // The end of the expression, nothing left to do
+            ret = true;
             break;
         }
 
@@ -411,8 +447,11 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                 symstack_push(&s, inputTerminal);
                 *status = scanner_get_token(pToken);
                 if (*status != SUCCESS) {
-                    return false;
+                    cont = false;
+                    ret = false;
+                    break;
                 }
+                continue;
 
             case '<':
                 // do the shift operation
@@ -422,29 +461,42 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                 // get new token
                 *status = scanner_get_token(pToken);
                 if (*status != SUCCESS) {
-                    return false;
+                    cont = false;
+                    ret = false;
+                    break;
                 }
                 continue;
 
             case '>':
                 if (!symstack_reduce(&s)) {
-                    return false;
+                    cont = false;
+                    ret = false;
+                    break;
                 }
                 // do not get a new token
                 continue;
 
-            default:
+            default:;
                 // The table does not allow this combination
+                // the cycle will be ended
+                cont = false;
+                // filthy hack, might need to be fixed later
+                while (symstack_reduce(&s)) {
+                    // reduce
+                }
+
                 if (symstack_pop(&s).symbolType != S_EXPR) {
-                    return false;
+                    ret = false;
+                    break;
                 }
                 if (symstack_pop(&s).symbolType != S_EMPTY) {
-                    return false;
+                    ret = false;
+                    break;
                 }
-                return true;
+                ret = true;
         }
     }
 
     symstack_destroy(&s);
-    return true;
+    return ret;
 }

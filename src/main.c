@@ -63,4 +63,5 @@ int main() {
         fprintf(stderr, "Compilation failed with %s error\n", errorStrings[s]);
     }
     scanner_destroy();
+    return s;
 }

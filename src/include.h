@@ -12,6 +12,11 @@
 #ifndef INCLUDE_H
 #define INCLUDE_H
 
+#include "symtable.h"
+#include "types.h"
+
 extern const char *includeCode;
+
+Status add_builtin_fn(SymTab *st);
 
 #endif //INCLUDE_H

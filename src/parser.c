@@ -57,12 +57,15 @@ bool nt_while(HTabPair *fnPair);
 
 bool nt_return(HTabPair *fnPair);
 
-bool nt_r_value_list(bool emptyValid, HTabPair *fnPair);
+bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList listAssign);
 
-bool nt_r_value_list_next(HTabPair *fnPair);
-bool nt_l_value_list();
-bool nt_l_value_list_next();
-bool nt_fn_call();
+bool nt_r_value_list_next(HTabPair *fnPair, TypeList listAssign);
+
+bool nt_l_value_list(HTabPair *fnPair, TypeList list);
+
+bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign);
+
+bool nt_fn_call(bool discardReturn);
 bool nt_fn_call_params(HTabPair *callPair);
 bool nt_fn_call_params_next(HTabPair *callPair);
 bool nt_type();
@@ -100,6 +103,7 @@ bool nt_prolog() {
             }
             GET_NEW_TOKEN();
 
+            ASSERT_SUCCESS(add_builtin_fn(&st));
             gen_print("%s", includeCode);
 
             found = true;
@@ -131,7 +135,7 @@ bool nt_prog_body() {
             // it has to skip the definitions inbetween
             gen_print("LABEL %%start%u\n", callNumber);
             callNumber++;
-            ASSERT_NT(nt_fn_call());
+            ASSERT_NT(nt_fn_call(true));
             gen_print("JUMP %%start%u\n", callNumber);
             ASSERT_NT(nt_prog_body());
 
@@ -341,7 +345,7 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
 
             // move the parameter to newly declared local variable
             gen_print("DEFVAR LF@$%u\n", paramPair->value.ID);
-            gen_print("MOVE LF@$%u TF@%%param%u\n",
+            gen_print("MOVE LF@$%u LF@%%param%u\n",
                       paramPair->value.ID,
                       list_active_index(&pair->value.paramList)
                       );
@@ -403,6 +407,13 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
                 // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             }
+
+            // move the parameter to newly declared local variable
+            gen_print("DEFVAR LF@$%u\n", paramPair->value.ID);
+            gen_print("MOVE LF@$%u LF@%%param%u\n",
+                      paramPair->value.ID,
+                      list_active_index(&pair->value.paramList)
+            );
 
             if (!nt_type()) {
                 break;
@@ -550,7 +561,7 @@ bool nt_fn_body(HTabPair *fnPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call());
+                ASSERT_NT(nt_fn_call(false));
                 ASSERT_NT(nt_fn_body(fnPair));
             } else {
                 ASSERT_NT(nt_assignment(fnPair));
@@ -629,7 +640,7 @@ bool nt_var_decl_assign() {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call());
+                ASSERT_NT(nt_fn_call(false));
             } else {
                 ASSERT_NT(nt_expr(&token, &st, &status)); // TODO semantic check inside
             }
@@ -648,8 +659,10 @@ bool nt_assignment(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:
-            ASSERT_NT(nt_l_value_list());
+        case TOKEN_IDENTIFIER:;
+            // TODO - typelist, ktery poslu do leve a pak i do prave strany
+            TypeList listAssign = list_init();
+            ASSERT_NT(nt_l_value_list(fnPair, listAssign));
             ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
             GET_NEW_TOKEN();
 
@@ -661,9 +674,11 @@ bool nt_assignment(HTabPair *fnPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call());
+                // TODO - typelist, checknout identitu
+                ASSERT_NT(nt_fn_call(false));
             } else {
-                ASSERT_NT(nt_r_value_list(false, fnPair));
+                // TODO - typelist, checknout identitu
+                ASSERT_NT(nt_r_value_list(false, fnPair, listAssign));
             }
 
             found = true;
@@ -746,7 +761,7 @@ bool nt_return(HTabPair *fnPair) {
         case TOKEN_RETURN:
             // <return> -> TOKEN_RETURN <r_value_list>
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_r_value_list(true, fnPair));
+            ASSERT_NT(nt_r_value_list(true, fnPair, fnPair->value.returnList));
             found = true;
             break;
 
@@ -756,7 +771,7 @@ bool nt_return(HTabPair *fnPair) {
     return found;
 }
 
-bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
+bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
@@ -768,28 +783,31 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
             // Cannot be a function
             // <r_value_list> -> <r_value> <r_value_list_next>
             ASSERT_NT(nt_expr(&token, &st, &status));
+/*
+            // TODO - pockat na to co prijde z nt_expr
             // this is supposed to compare against expression
-            /*
-            Type rValueType = st_token_to_type(&st, token);
-            list_first(&fnPair->value.returnList);
-            Type savedValue = list_get_active(&fnPair->value.returnList);
-            // Check if parameter type matches the one from definition / declaration
-            if (!can_assign(rValueType, savedValue)) {
+            Type rValueType = st_token_to_type(&st, token); // spatne neni treba pouzit token
+            list_first(&listAssign);
+            Type savedValue = list_get_active(&listAssign);
+            // Check if return type matches head
+            if (!can_assign(savedValue, rValueType)) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
             }
 */
 
-            ASSERT_NT(nt_r_value_list_next(fnPair));
+            ASSERT_NT(nt_r_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
         default:
-            list_first(&fnPair->value.returnList);
-            if (list_is_active(&fnPair->value.returnList)) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
+
+            // Check if number of returns head
+            list_first(&listAssign);
+            if (list_is_active(&listAssign)) {
+                // TODO return value nil
             }
+
             if (emptyValid) {
                 found = true;
             }
@@ -798,49 +816,62 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
     return found;
 }
 
-bool nt_r_value_list_next(HTabPair *fnPair) {
+bool nt_r_value_list_next(HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
             ASSERT_NT(nt_expr(&token, &st, &status));
+/*
+            // TODO - pockat na to co prijde z nt_expr
             // this is supposed to compare against expression
-            /*
-            Type rValueType = st_token_to_type(&st, token);
-            list_next(&fnPair->value.returnList);
-            Type savedValue = list_get_active(&fnPair->value.returnList);
+            Type rValueType = st_token_to_type(&st, token); //spatne - nepouzivat token
+            list_next(&listAssign);
+            Type savedValue = list_get_active(&listAssign);
             // Check if parameter type matches the one from definition / declaration
-            if (!can_assign(rValueType, savedValue)) {
+            if (!can_assign(savedValue, rValueType)) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
             }
-            */
-            ASSERT_NT(nt_r_value_list_next(fnPair));
+
+*/
+            ASSERT_NT(nt_r_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
         default:
             // can be empty
-            list_next(&fnPair->value.returnList);
-            if (list_is_active(&fnPair->value.returnList)) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
+
+            list_next(&listAssign);
+            if (list_is_active(&listAssign)) {
+                // TODO return value nil
             }
+
             found = true;
             break;
     }
     return found;
 }
 
-bool nt_l_value_list() {
+bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:
-            // todo semantics
+        case TOKEN_IDENTIFIER:;
+/*
+            Type lValueType = st_token_to_type(&st, token);
+            list_first(&listAssign);
+            Type savedValue = list_get_active(&listAssign);
+            // Check if return type matches head
+            if (!can_assign(savedValue, lValueType)) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
+*/
+            //list_append(listAssign);
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_l_value_list_next());
+            ASSERT_NT(nt_l_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
@@ -850,7 +881,7 @@ bool nt_l_value_list() {
     return found;
 }
 
-bool nt_l_value_list_next() {
+bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
@@ -858,7 +889,7 @@ bool nt_l_value_list_next() {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_l_value_list_next());
+            ASSERT_NT(nt_l_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
@@ -870,7 +901,7 @@ bool nt_l_value_list_next() {
 }
 
 
-bool nt_fn_call() {
+bool nt_fn_call(bool discardReturn) {
     bool found = false;
 
     switch (token.type) {
@@ -893,6 +924,18 @@ bool nt_fn_call() {
             if (!nt_fn_call_params(callPair)) {
                 break;
             }
+            gen_print("CALL %s\n", callPair->key);
+
+            if (discardReturn) {
+                gen_print("CLEARS \n");
+                /*
+                unsigned count = list_count(&callPair->value.returnList);
+                for (int i=0; i<count; i++) {
+                    gen_print("POPS \n");
+                }
+                */
+            }
+
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN()
             found = true;
@@ -915,17 +958,23 @@ bool nt_fn_call_params(HTabPair *callPair) {
         case TOKEN_STRING_LIT:
         case TOKEN_NIL:;
 
-            // Set activity to the first item
-            list_first(&callPair->value.paramList);
-            // Get type of the first item in paramList
-            Type saved = list_get_active(&callPair->value.paramList);
-            // Check if parameter type matches the one from definition / declaration
-            if (!can_assign(saved, st_token_to_type(&st, token))) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
+            if (!callPair->value.specialFn) {
+                // Set activity to the first item
+                list_first(&callPair->value.paramList);
+                // Get type of the first item in paramList
+                Type saved = list_get_active(&callPair->value.paramList);
+                // Check if parameter type matches the one from definition / declaration
+                if (!can_assign(saved, st_token_to_type(&st, token))) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+            }
+            else {
+                // TODO for write function
             }
 
             // move the argument into the temporary frame
+            gen_print("DEFVAR TF@%%param%d\n", list_active_index(&callPair->value.paramList));
             gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
             if (token.type == TOKEN_IDENTIFIER) {
                 gen_print("LF@%s", token.str);
@@ -942,11 +991,14 @@ bool nt_fn_call_params(HTabPair *callPair) {
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
 
-            // Check that the list is no longer active
-            list_first(&callPair->value.paramList);
-            if (list_is_active(&callPair->value.paramList)) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
+            // Do this only for write function
+            if (!callPair->value.specialFn) {
+                // Check that the list is no longer active
+                list_first(&callPair->value.paramList);
+                if (list_is_active(&callPair->value.paramList)) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
             }
 
             found = true;
@@ -963,14 +1015,20 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
 
-            // Set activity to the next item
-            list_next(&callPair->value.paramList);
-            // Get type of the active item in paramList
-            Type saved = list_get_active(&callPair->value.paramList);
-            // Check if parameter type matches the one from definition / declaration
-            if (!can_assign(saved, st_token_to_type(&st, token))) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
+            // Do this only for write function
+            if (!callPair->value.specialFn) {
+                // Set activity to the next item
+                list_next(&callPair->value.paramList);
+                // Get type of the active item in paramList
+                Type saved = list_get_active(&callPair->value.paramList);
+                // Check if parameter type matches the one from definition / declaration
+                if (!can_assign(saved, st_token_to_type(&st, token))) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+            }
+            else {
+                // TODO for write function
             }
 
             // move the argument into the temporary frame
@@ -991,11 +1049,14 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
 
-            // Check that the list is no longer active
-            list_next(&callPair->value.paramList);
-            if (list_is_active(&callPair->value.paramList)) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
+            // Do this only for write function
+            if (!callPair->value.specialFn) {
+                // Check that the list is no longer active
+                list_next(&callPair->value.paramList);
+                if (list_is_active(&callPair->value.paramList)) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
             }
 
             found = true;

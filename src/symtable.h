@@ -33,7 +33,8 @@ typedef struct {
     TypeList    paramList;          // Only used in functions
     TypeList    returnList;         // Only used in functions
     Type        varType;            // Only used in variables, TYPE_NONE for functions
-    int ID; // each entry in symtable gets its own unique ID
+    int         ID;                 // each entry in symtable gets its own unique ID
+    bool        specialFn;          // for write function
 } HTabValue;
 
 // Pair of values in hash table

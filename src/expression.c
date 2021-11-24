@@ -391,7 +391,10 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
 
     symstack_push(&s, EMPTY_SYMBOL);
 
-    while (true) {
+    bool ret = false;
+    bool cont = true;
+
+    while (cont) {
         Symbol stackTopTerminal = symstack_top_terminal(&s);
         Symbol inputTerminal = token_to_symbol(*pToken, st);
 
@@ -402,6 +405,7 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
         if ((inputTerminal.symbolType == S_EMPTY)
             && (stackTopTerminal.symbolType == S_EMPTY)) {
             // The end of the expression, nothing left to do
+            ret = true;
             break;
         }
 
@@ -411,7 +415,9 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                 symstack_push(&s, inputTerminal);
                 *status = scanner_get_token(pToken);
                 if (*status != SUCCESS) {
-                    return false;
+                    cont = false;
+                    ret = false;
+                    break;
                 }
 
             case '<':
@@ -422,29 +428,42 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                 // get new token
                 *status = scanner_get_token(pToken);
                 if (*status != SUCCESS) {
-                    return false;
+                    cont = false;
+                    ret = false;
+                    break;
                 }
                 continue;
 
             case '>':
                 if (!symstack_reduce(&s)) {
-                    return false;
+                    cont = false;
+                    ret = false;
+                    break;
                 }
                 // do not get a new token
                 continue;
 
-            default:
+            default:;
                 // The table does not allow this combination
+                // the cycle will be ended
+                cont = false;
+                // filthy hack, might need to be fixed later
+                while (symstack_reduce(&s)) {
+                    // reduce
+                }
+
                 if (symstack_pop(&s).symbolType != S_EXPR) {
-                    return false;
+                    ret = false;
+                    break;
                 }
                 if (symstack_pop(&s).symbolType != S_EMPTY) {
-                    return false;
+                    ret = false;
+                    break;
                 }
-                return true;
+                ret = true;
         }
     }
 
     symstack_destroy(&s);
-    return true;
+    return ret;
 }

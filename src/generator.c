@@ -60,7 +60,7 @@ Status gen_print(const char *format, ...) {
         }
         vsnprintf(printer.buffer, BUFFER_MIN_FREE, format, args);
     } else {
-        vfprintf(stderr, format, args);
+        vfprintf(printer.out, format, args);
     }
     va_end(args);
     return SUCCESS;
@@ -69,7 +69,7 @@ Status gen_print(const char *format, ...) {
 Status gen_prepend(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(stderr, format, args);
+    vfprintf(printer.out, format, args);
     va_end(args);
     return SUCCESS;
 }

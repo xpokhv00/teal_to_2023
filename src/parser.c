@@ -64,7 +64,8 @@ bool nt_r_value_list_next(HTabPair *fnPair, TypeList listAssign);
 bool nt_l_value_list(HTabPair *fnPair, TypeList list);
 
 bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign);
-bool nt_fn_call();
+
+bool nt_fn_call(bool discardReturn);
 bool nt_fn_call_params(HTabPair *callPair);
 bool nt_fn_call_params_next(HTabPair *callPair);
 bool nt_type();
@@ -134,7 +135,7 @@ bool nt_prog_body() {
             // it has to skip the definitions inbetween
             gen_print("LABEL %%start%u\n", callNumber);
             callNumber++;
-            ASSERT_NT(nt_fn_call());
+            ASSERT_NT(nt_fn_call(true));
             gen_print("JUMP %%start%u\n", callNumber);
             ASSERT_NT(nt_prog_body());
 
@@ -344,7 +345,7 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
 
             // move the parameter to newly declared local variable
             gen_print("DEFVAR LF@$%u\n", paramPair->value.ID);
-            gen_print("MOVE LF@$%u TF@%%param%u\n",
+            gen_print("MOVE LF@$%u LF@%%param%u\n",
                       paramPair->value.ID,
                       list_active_index(&pair->value.paramList)
                       );
@@ -406,6 +407,13 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
                 // Adds item to the list if the function is undeclared
                 ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
             }
+
+            // move the parameter to newly declared local variable
+            gen_print("DEFVAR LF@$%u\n", paramPair->value.ID);
+            gen_print("MOVE LF@$%u LF@%%param%u\n",
+                      paramPair->value.ID,
+                      list_active_index(&pair->value.paramList)
+            );
 
             if (!nt_type()) {
                 break;
@@ -553,7 +561,7 @@ bool nt_fn_body(HTabPair *fnPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call());
+                ASSERT_NT(nt_fn_call(false));
                 ASSERT_NT(nt_fn_body(fnPair));
             } else {
                 ASSERT_NT(nt_assignment(fnPair));
@@ -632,7 +640,7 @@ bool nt_var_decl_assign() {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call());
+                ASSERT_NT(nt_fn_call(false));
             } else {
                 ASSERT_NT(nt_expr(&token, &st, &status)); // TODO semantic check inside
             }
@@ -667,7 +675,7 @@ bool nt_assignment(HTabPair *fnPair) {
 
             if (isFunction) {
                 // TODO - typelist, checknout identitu
-                ASSERT_NT(nt_fn_call());
+                ASSERT_NT(nt_fn_call(false));
             } else {
                 // TODO - typelist, checknout identitu
                 ASSERT_NT(nt_r_value_list(false, fnPair, listAssign));
@@ -893,7 +901,7 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign) {
 }
 
 
-bool nt_fn_call() {
+bool nt_fn_call(bool discardReturn) {
     bool found = false;
 
     switch (token.type) {
@@ -916,6 +924,18 @@ bool nt_fn_call() {
             if (!nt_fn_call_params(callPair)) {
                 break;
             }
+            gen_print("CALL %s\n", callPair->key);
+
+            if (discardReturn) {
+                gen_print("CLEARS \n");
+                /*
+                unsigned count = list_count(&callPair->value.returnList);
+                for (int i=0; i<count; i++) {
+                    gen_print("POPS \n");
+                }
+                */
+            }
+
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
             GET_NEW_TOKEN()
             found = true;
@@ -954,6 +974,7 @@ bool nt_fn_call_params(HTabPair *callPair) {
             }
 
             // move the argument into the temporary frame
+            gen_print("DEFVAR TF@%%param%d\n", list_active_index(&callPair->value.paramList));
             gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
             if (token.type == TOKEN_IDENTIFIER) {
                 gen_print("LF@%s", token.str);

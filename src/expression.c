@@ -305,7 +305,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
 void reduce_value(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
-    gen_print("PUSH ");
+    gen_print("PUSHS ");
     gen_print_value(x.token, st);// TODO all the type checks and code generation
     gen_print("\n");
     symstack_push(s, GENERIC_EXPR);

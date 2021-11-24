@@ -105,3 +105,23 @@ Status gen_print_literal(Token token) {
     }
     return SUCCESS;
 }
+
+
+Status gen_print_value(Token token, SymTab* st) {
+    if (token.type == TOKEN_IDENTIFIER) {
+        return gen_print_var(token, st);
+    }
+    return gen_print_literal(token);
+}
+
+Status gen_print_var(Token token, SymTab* st) {
+    if (token.type == TOKEN_IDENTIFIER) {
+        HTabPair *pair = st_lookup(st, token.str);
+        if (pair == NULL) {
+            return ERR_INTERNAL;
+        }
+        gen_print("LF@$%u", pair->value.ID);
+    }
+    return SUCCESS;
+}
+

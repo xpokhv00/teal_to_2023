@@ -134,6 +134,8 @@ bool nt_prog_body() {
             ASSERT_NT(nt_fn_call());
             gen_print("JUMP %%start%u\n", callNumber);
             ASSERT_NT(nt_prog_body());
+
+            found = true;
             break;
 
         case TOKEN_EOF:
@@ -629,7 +631,7 @@ bool nt_var_decl_assign() {
             if (isFunction) {
                 ASSERT_NT(nt_fn_call());
             } else {
-                ASSERT_NT(nt_expr(&token)); // TODO semantic check inside
+                ASSERT_NT(nt_expr(&token, &st, &status)); // TODO semantic check inside
             }
             found = true;
             break;
@@ -680,7 +682,7 @@ bool nt_if(HTabPair *fnPair) {
         case TOKEN_IF:
             // <if> -> TOKEN_IF <expr> TOKEN_THEN <fn_body> <else> TOKEN_END
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_expr(&token));
+            ASSERT_NT(nt_expr(&token, &st, &status));
             ASSERT_TOKEN_TYPE(TOKEN_THEN);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_body(fnPair));
@@ -722,7 +724,7 @@ bool nt_while(HTabPair *fnPair) {
         case TOKEN_WHILE:
             // <while> -> TOKEN_WHILE <expr> TOKEN_DO <fn_body> TOKEN_END
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_expr(&token));
+            ASSERT_NT(nt_expr(&token, &st, &status));
             ASSERT_TOKEN_TYPE(TOKEN_DO);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_body(fnPair));
@@ -765,7 +767,7 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
         case TOKEN_NIL:;
             // Cannot be a function
             // <r_value_list> -> <r_value> <r_value_list_next>
-            ASSERT_NT(nt_expr(&token));
+            ASSERT_NT(nt_expr(&token, &st, &status));
             // this is supposed to compare against expression
             /*
             Type rValueType = st_token_to_type(&st, token);
@@ -802,7 +804,7 @@ bool nt_r_value_list_next(HTabPair *fnPair) {
     switch (token.type) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_expr(&token));
+            ASSERT_NT(nt_expr(&token, &st, &status));
             // this is supposed to compare against expression
             /*
             Type rValueType = st_token_to_type(&st, token);

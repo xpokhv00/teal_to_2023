@@ -14,6 +14,7 @@
 
 #include "common.h"
 #include "scanner.h"
+#include "symtable.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,5 +30,7 @@ Status gen_prepend(const char *format, ...);
 void gen_destroy();
 
 Status gen_print_literal(Token token);
+Status gen_print_value(Token token, SymTab* st);
+Status gen_print_var(Token token, SymTab* st);
 
 #endif //GENERATOR_H

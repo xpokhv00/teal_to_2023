@@ -14,34 +14,58 @@
 
 #include "common.h"
 #include "scanner.h"
+#include "generator.h"
+#include "types.h"
+#include "symtable.h"
 #include <stdlib.h>
 #include <stdbool.h>
 
 #define ALLOCATION_CHUNK 256
+#define MAX_RULE_LENGTH 10
 
-// extends TokenType
 typedef enum {
-    NT_EXPR = NUM_TOKENS,
-    NT_EXPR_ID,
-    NT_EXPR_OP,
+    S_NONE = 0,
+    S_EXPR,
+    S_VALUE,
+    S_EMPTY,
+    S_MULDIV,
+    S_ADDSUB,
+    S_COMPARE,
+    S_EQNEQ,
+    S_PARL,
+    S_PARR,
+    S_HANDLE,
+    NUM_SYMBOLS,
 } SymbolType;
+
+typedef struct {
+    SymbolType symbolType;
+    Type varType;
+    Token token;
+} Symbol;
 
 typedef struct {
     int allocatedElements;
     int top;
-    SymbolType *data;
+    Symbol *data;
 } SymStack;
 
+typedef struct {
+    SymbolType from;
+    SymbolType to[MAX_RULE_LENGTH];
+    void (*fn)(SymStack *s);
+} Rule;
+
 void symstack_init(SymStack* s);
-Status symstack_push(SymStack* s, SymbolType item);
-SymbolType symstack_top(SymStack* s);
-SymbolType symstack_pop(SymStack* s);
+Status symstack_push(SymStack* s, Symbol item);
+Symbol symstack_top(SymStack* s);
+Symbol symstack_pop(SymStack* s);
 bool symstack_is_empty(SymStack* s);
 void symstack_destroy(SymStack* s);
 
 // The only function, that is called from parser
 // It parses expressions, check for correct semantics and generates code
-bool nt_expr(Token *pToken);
+bool nt_expr(Token *pToken, SymTab *st, Status *status);
 
 
 

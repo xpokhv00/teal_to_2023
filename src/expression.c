@@ -11,8 +11,13 @@
 
 #include "expression.h"
 
+const Symbol EMPTY_SYMBOL = { .symbolType = S_EMPTY };
+const Symbol HANDLE = { .symbolType = S_HANDLE };
+const Symbol GENERIC_EXPR = { .symbolType = S_EXPR, .varType=INTEGER };
+const Symbol NONE_SYMBOL = { .symbolType = S_NONE };
 
-
+// for all the functions to use
+static SymTab *st;
 
 void symstack_init(SymStack* s)
 {
@@ -21,14 +26,14 @@ void symstack_init(SymStack* s)
     s->allocatedElements = 0;
 }
 
-Status symstack_push(SymStack* s, SymbolType item)
+Status symstack_push(SymStack* s, Symbol item)
 {
     // reallocate if not enough space
     if ((s->top + 1) >= s->allocatedElements)
     {
         int numElements = s->allocatedElements + ALLOCATION_CHUNK;
 
-        SymbolType *newPtr = realloc(s->data, numElements * sizeof(TokenType));
+        Symbol *newPtr = realloc(s->data, numElements * sizeof(Symbol));
         if (newPtr == NULL)
         {
             return ERR_INTERNAL;
@@ -42,27 +47,36 @@ Status symstack_push(SymStack* s, SymbolType item)
     return SUCCESS;
 }
 
-SymbolType symstack_top(SymStack* s)
-{
+Symbol symstack_top(SymStack* s) {
     if (!symstack_is_empty(s))
     {
         return s->data[s->top];
     }
-    return (SymbolType)NONE;
+    return NONE_SYMBOL;
 }
 
-SymbolType symstack_pop(SymStack* s)
+// A function more powerful than top
+// it can read n-th element from the top of the stack
+// with depth=0 it behaves exactly like stack_top
+Symbol symstack_peek(SymStack* s, int depth) {
+    if (depth > s->top) {
+        return NONE_SYMBOL;
+    }
+    return s->data[s->top-depth];
+}
+
+Symbol symstack_pop(SymStack* s)
 {
     if (!symstack_is_empty(s))
     {
         return s->data[s->top--];
     }
-    return (SymbolType)NONE;
+    return NONE_SYMBOL;
 }
 
 bool symstack_is_empty(SymStack* s)
 {
-    return s->top == -1;
+    return s->top <= -1;
 }
 
 void symstack_destroy(SymStack* s)
@@ -73,299 +87,364 @@ void symstack_destroy(SymStack* s)
     s->allocatedElements = 0;
 }
 
-// This function returns < or > or e or =
-// based on token which is stored on top of the stack and based on token which it recieves on begining
-// ********************************** BIG NOTE ***************************************************
-// THIS FUNCTION DOES NOT TAKE INTO ACCOUNT END OF THE EXPRESSION
-char check_table(Token *pToken, SymStack s)
-{
-    TokenType comp;
-    // if top of the stack is TOKEN_ENED aka valid expression
-    if (symstack_top(&s) == TOKEN_END)
-    {
-        comp = s.data[s.top -1];
+Symbol symstack_top_terminal(SymStack* s) {
+    int i=0;
+    while (i>=0) {
+        // get the n-th symbol from the top
+        Symbol current = s->data[s->top-i];
+        // if it is a terminal, return it
+        if (current.symbolType != S_EXPR) {
+            return current;
+        }
+        i++;
     }
-    else
-    {
-        comp = symstack_top(&s);
-    }
-    // deciding for empty stack
-    if (comp == (SymbolType)NONE)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
-        if (pToken->type == TOKEN_PAR_L) return '<';
-        if (pToken->type == TOKEN_PAR_R) return 'e';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '<';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-    // deciding for + -
-    if ( comp == (SymbolType)TOKEN_PLUS || comp == (SymbolType)TOKEN_MINUS)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
-        if (pToken->type == TOKEN_PAR_L) return '<';
-        if (pToken->type == TOKEN_PAR_R) return '>';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-
-    // deciding for */
-    if ( comp == (SymbolType)TOKEN_MULTIPLY || comp == (SymbolType)TOKEN_DIVIDE || comp == (SymbolType)TOKEN_INT_DIVIDE)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
-        if (pToken->type == TOKEN_PAR_L) return '<';
-        if (pToken->type == TOKEN_PAR_R) return '>';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-
-    // deciding for left par
-    if ( comp == (SymbolType)TOKEN_PAR_L )
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
-        if (pToken->type == TOKEN_PAR_L) return '<';
-        if (pToken->type == TOKEN_PAR_R) return '=';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '<';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '<';
-    }
-
-    // deciding for right par
-    if ( comp == (SymbolType)TOKEN_PAR_R)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
-        if (pToken->type == TOKEN_PAR_L) return 'e';
-        if (pToken->type == TOKEN_PAR_R) return '>';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return 'e';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-
-    // deciding for number
-    if ( comp == (SymbolType)TOKEN_INTEGER_LIT || comp == (SymbolType)TOKEN_DOUBLE_LIT)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '>';
-        if (pToken->type == TOKEN_PAR_L) return 'e';
-        if (pToken->type == TOKEN_PAR_R) return '>';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return 'e';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-
-    // deciding for <= >= < >
-    if ( comp == (SymbolType)TOKEN_LT || comp == (SymbolType)TOKEN_GT || comp == (SymbolType)TOKEN_GEQ || comp == (SymbolType)TOKEN_LEQ)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '<';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
-        if (pToken->type == TOKEN_PAR_L) return '<';
-        if (pToken->type == TOKEN_PAR_R) return '>';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-
-    //deciding for == !=
-    if ( comp == (SymbolType)TOKEN_EQUALS || comp == (SymbolType)TOKEN_NEQ)
-    {
-        if (pToken->type == TOKEN_PLUS || pToken->type == TOKEN_MINUS) return '>';
-        if (pToken->type == TOKEN_DIVIDE || pToken->type == TOKEN_INT_DIVIDE || pToken->type == TOKEN_MULTIPLY) return '<';
-        if (pToken->type == TOKEN_PAR_L) return '<';
-        if (pToken->type == TOKEN_PAR_R) return '>';
-        if (pToken->type == TOKEN_INTEGER_LIT || pToken->type == TOKEN_DOUBLE_LIT) return '<';
-        if (pToken->type == TOKEN_LT || pToken->type == TOKEN_GT || pToken->type == TOKEN_GEQ || pToken->type == TOKEN_LEQ) return '>';
-        if (pToken->type == TOKEN_EQUALS || pToken->type == TOKEN_NEQ) return '>';
-    }
-    return 'e';
+    return NONE_SYMBOL;
 }
 
-/* **********************************************************************************************************************
- *
- *  **********************************************************************************************************************
- */
+Status symstack_push_above_top_terminal(SymStack* s, Symbol item) {
+    // reallocate if not enough space
+    if ((s->top + 1) >= s->allocatedElements) {
+        int numElements = s->allocatedElements + ALLOCATION_CHUNK;
+
+        Symbol *newPtr = realloc(s->data, numElements * sizeof(Symbol));
+        if (newPtr == NULL)
+        {
+            return ERR_INTERNAL;
+        }
+        s->allocatedElements = numElements;
+        s->data = newPtr;
+    }
+
+    for (int i = s->top; i>=0; i--) {
+        // while there are non-terminals
+        if (s->data[i].symbolType == S_EXPR) {
+            // shift them to the back
+            s->data[i+1] = s->data[i];
+        } else {
+            // after you reach the first terminal, insert the item
+            s->data[i+1] = item;
+            break;
+        }
+    }
+
+    s->top++;
+    return SUCCESS;
+}
+
+SymbolType tokentype_to_symboltype(TokenType tt) {
+    switch(tt) {
+        case TOKEN_INTEGER_LIT:
+        case TOKEN_DOUBLE_LIT:
+        case TOKEN_STRING_LIT:
+        case TOKEN_NIL:
+        case TOKEN_IDENTIFIER:
+            return S_VALUE;
+
+        case TOKEN_MULTIPLY:
+        case TOKEN_DIVIDE:
+            return S_MULDIV;
+
+        case TOKEN_PLUS:
+        case TOKEN_MINUS:
+            return S_ADDSUB;
+
+        case TOKEN_GT:
+        case TOKEN_LT:
+        case TOKEN_LEQ:
+        case TOKEN_GEQ:
+            return S_COMPARE;
+
+        case TOKEN_EQUALS:
+        case TOKEN_NEQ:
+            return S_EQNEQ;
+
+        case TOKEN_PAR_L:
+            return S_PARL;
+
+        case TOKEN_PAR_R:
+            return S_PARR;
+
+        default:
+            return S_NONE;
+    }
+}
+
+Symbol token_to_symbol(Token token, SymTab *symTab) {
+    Symbol symbol;
+    symbol.varType = st_token_to_type(symTab, token),
+    symbol.symbolType = tokentype_to_symboltype(token.type),
+    symbol.token = token;
+    return symbol;
+}
 
 
-bool nt_expr(Token *pToken)
-{
+char table_lookup(Symbol stackTop, Symbol inputSymbol) {
+    SymbolType top = stackTop.symbolType;
+    SymbolType in = inputSymbol.symbolType;
 
-    Status status;
+    switch (top) {
+        case S_ADDSUB:
+            switch (in) {
+                case S_ADDSUB:
+                case S_PARR:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
+                case S_MULDIV:
+                case S_PARL:
+                case S_VALUE:
+                    return '<';
+                default:
+                    return 'e';
+            }
 
+        case S_MULDIV:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARR:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
+                case S_PARL:
+                case S_VALUE:
+                    return '<';
+                default:
+                    return 'e';
+            }
+
+        case S_PARL:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARL:
+                case S_PARR:
+                case S_VALUE:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '<';
+                default:
+                    return 'e';
+            }
+
+        case S_PARR:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARR:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
+                default:
+                    return 'e';
+            }
+
+        case S_VALUE:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARR:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
+                default:
+                    return 'e';
+            }
+
+        case S_COMPARE:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARL:
+                case S_PARR:
+                case S_VALUE:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                default:
+                    return 'e';
+            }
+
+        case S_EQNEQ:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARL:
+                case S_PARR:
+                case S_VALUE:
+                case S_COMPARE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                default:
+                    return 'e';
+            }
+
+        case S_EMPTY:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARL:
+                case S_VALUE:
+                case S_COMPARE:
+                case S_EQNEQ:
+                    return '<';
+                default:
+                    return 'e';
+            }
+
+        default:
+            return 'e';
+    }
+}
+
+void reduce_value(SymStack *s) {
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+    gen_print("PUSH ");
+    gen_print_value(x.token, st);// TODO all the type checks and code generation
+    gen_print("\n");
+    symstack_push(s, GENERIC_EXPR);
+}
+
+void reduce_addsub(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+    // TODO all the type checks and code generation
+    gen_print("ADDS\n");
+    symstack_push(s, GENERIC_EXPR);
+}
+
+void reduce_muldiv(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+    // TODO all the type checks and code generation
+    gen_print("MULS\n");
+    symstack_push(s, GENERIC_EXPR);
+}
+
+void reduce_parenthesis(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+    // TODO all the type checks and code generation
+    symstack_push(s, GENERIC_EXPR);
+}
+
+void reduce_placeholder(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+    // TODO all the type checks and code generation
+    symstack_push(s, GENERIC_EXPR);
+}
+
+bool symstack_reduce(SymStack *s) {
+    // WARNING: all the rules are written in reverse order
+    // It is easier to match them to stack top
+    // This table is dependent on zero initialization of rules, that are not specified
+    static const Rule ruleTable[] = {
+            {.to={S_VALUE}, .fn=reduce_value},
+            {.to={S_EXPR, S_ADDSUB, S_EXPR}, .fn=reduce_addsub},
+            {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
+            {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},
+            {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_placeholder},
+
+    };
+    int numRules = sizeof(ruleTable) / sizeof(Rule);
+
+    for (int i=0; i<numRules; i++) {
+        for (int j=0; j<MAX_RULE_LENGTH; j++) {
+            SymbolType actual = symstack_peek(s, j).symbolType;
+            SymbolType expected = ruleTable[i].to[j];
+            if (actual != expected) {
+                if ((expected == S_NONE) && (actual==S_HANDLE)) {
+                    // we've made it to the end of the rule
+                    // so we can apply its function
+                    ruleTable[i].fn(s);
+                    return true;
+                } else {
+                    // move onto the next rule
+                    break;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+
+bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
+    st = symTab;
     SymStack s;
     symstack_init(&s);
 
-    int num_of_val_tokens = 16;
-    TokenType valid_tokens[num_of_val_tokens];
+    symstack_push(&s, EMPTY_SYMBOL);
 
-    valid_tokens[0]  = TOKEN_PLUS;
-    valid_tokens[1]  = TOKEN_MINUS;
-    valid_tokens[2]  = TOKEN_DIVIDE;
-    valid_tokens[3]  = TOKEN_INT_DIVIDE;
-    valid_tokens[4]  = TOKEN_MULTIPLY;
-    valid_tokens[5]  = TOKEN_EQUALS;
-    valid_tokens[6]  = TOKEN_LT;
-    valid_tokens[7]  = TOKEN_LEQ;
-    valid_tokens[8]  = TOKEN_GT;
-    valid_tokens[9]  = TOKEN_GEQ;
-    valid_tokens[10] = TOKEN_NEQ;
-    valid_tokens[11] = TOKEN_PAR_L;
-    valid_tokens[12] = TOKEN_PAR_R;
-    valid_tokens[13] = TOKEN_GET_LENGTH;
-    valid_tokens[14] = TOKEN_DOUBLE_LIT;
-    valid_tokens[15] = TOKEN_INTEGER_LIT;
+    while (true) {
+        Symbol stackTopTerminal = symstack_top_terminal(&s);
+        Symbol inputTerminal = token_to_symbol(*pToken, st);
 
-    TokenType tmp;
-
-    // function uses token "NONE" as indetier of stack bottom
-    // function uses token "TOKEN_NIL" as indetier of handle
-    // function uses token "TOKEN_END" as identifier of correct expression
-    symstack_push(&s, (SymbolType) NONE);
-    bool compatible = true;
-    while (true)
-    {
-        // this cycle checks if pToken == +, - , / , * , = , < , <= , > , >= , ~= , ( , ) , int , double
-        for (int i = 0; i < 16; i++)
-        {
-            if (pToken->type == valid_tokens[i]) break;
-            if (i == num_of_val_tokens - 1) compatible = false;
+        if (inputTerminal.symbolType == S_NONE) {
+            inputTerminal = EMPTY_SYMBOL;
         }
 
-        if (compatible)
-        {
-            switch (check_table(pToken, s))
-            {
-                case '=':
-                    symstack_push(&s, (SymbolType) pToken->type);
-
-                    status = scanner_get_token(pToken);
-                    continue;
-                case '<':
-                    if (symstack_top(&s) == (SymbolType)TOKEN_END)
-                    {
-                        tmp = symstack_pop(&s);
-                        symstack_push(&s, (SymbolType)TOKEN_NIL);
-                        symstack_push(&s, (SymbolType)tmp);
-                        symstack_push(&s, (SymbolType)pToken->type);
-                    }
-                    else
-                    {
-                        symstack_push(&s, (SymbolType)TOKEN_NIL);
-                        symstack_push(&s, (SymbolType)pToken->type);
-                    }
-
-                    status = scanner_get_token(pToken);
-                    continue;
-                case '>':
-                    if (s.data[s.top - 1] == (SymbolType)TOKEN_NIL && (s.data[s.top] == (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top] == (SymbolType)TOKEN_INTEGER_LIT) )
-                    {
-                        symstack_pop(&s);
-                        symstack_pop(&s);
-                        symstack_push(&s, (SymbolType) TOKEN_END);
-                    }
-                    else if (s.data[s.top - 3] == (SymbolType)TOKEN_NIL)
-                    {
-                        if (s.data[s.top - 2] == (SymbolType)TOKEN_PAR_L && s.data[s.top - 1] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_PAR_R)
-                        {
-                            symstack_pop(&s);
-                            symstack_pop(&s);
-                            symstack_pop(&s);
-                            symstack_pop(&s);
-                            symstack_push(&s, (SymbolType) TOKEN_END);
-                        }
-                        else if (s.data[s.top - 2] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_END)
-                        {
-                            if (s.data[s.top -1] == (SymbolType)TOKEN_PAR_R || s.data[s.top -1] == (SymbolType)TOKEN_PAR_L ||
-                            s.data[s.top -1] ==  (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top -1] == (SymbolType)TOKEN_INTEGER_LIT)
-                            {
-                                return false;
-                            }
-                            else
-                            {
-                                symstack_pop(&s);
-                                symstack_pop(&s);
-                                symstack_pop(&s);
-                                symstack_pop(&s);
-                                symstack_push(&s, (SymbolType) TOKEN_END);
-                            }
-                        }
-
-                    }                                 
-                    else
-                    {
-                        return false;
-                    }
-                default :
-                    return false;
-            }
-        }
-        else
-        {
+        if ((inputTerminal.symbolType == S_EMPTY)
+            && (stackTopTerminal.symbolType == S_EMPTY)) {
+            // The end of the expression, nothing left to do
             break;
         }
-    }
 
-    while (true)
-    {
-        if (symstack_top(&s) == (SymbolType)NONE || (s.data[s.top - 1] == (SymbolType)NONE && symstack_top(&s) == (SymbolType)TOKEN_END))
-        {
-            break;
-        }
-        if (symstack_top(&s) == (SymbolType)TOKEN_PAR_L)
-        {
-            return false;
-        }
-
-        if (s.data[s.top - 1] == (SymbolType)TOKEN_NIL && (s.data[s.top] == (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top] == (SymbolType)TOKEN_INTEGER_LIT) )
-        {
-            symstack_pop(&s);
-            symstack_pop(&s);
-            symstack_push(&s, (SymbolType) TOKEN_END);
-        }
-        else if (s.data[s.top - 3] == (SymbolType)TOKEN_NIL)
-        {
-            if (s.data[s.top - 2] == (SymbolType)TOKEN_PAR_L && s.data[s.top - 1] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_PAR_R)
-            {
-                symstack_pop(&s);
-                symstack_pop(&s);
-                symstack_pop(&s);
-                symstack_pop(&s);
-                symstack_push(&s, (SymbolType) TOKEN_END);
-            }
-            else if (s.data[s.top - 2] == (SymbolType)TOKEN_END && s.data[s.top] == (SymbolType)TOKEN_END)
-            {
-                if (s.data[s.top -1] == (SymbolType)TOKEN_PAR_R || s.data[s.top -1] == (SymbolType)TOKEN_PAR_L ||
-                s.data[s.top -1] ==  (SymbolType)TOKEN_DOUBLE_LIT || s.data[s.top -1] == (SymbolType)TOKEN_INTEGER_LIT)
-                {
+        switch (table_lookup(stackTopTerminal, inputTerminal)) {
+            case '=':
+                // push the incoming symbol onto the stack
+                symstack_push(&s, inputTerminal);
+                *status = scanner_get_token(pToken);
+                if (*status != SUCCESS) {
                     return false;
                 }
-                else
-                {
-                    symstack_pop(&s);
-                    symstack_pop(&s);
-                    symstack_pop(&s);
-                    symstack_pop(&s);
-                    symstack_push(&s, (SymbolType) TOKEN_END);
+
+            case '<':
+                // do the shift operation
+                symstack_push_above_top_terminal(&s, HANDLE);
+                symstack_push(&s, inputTerminal);
+
+                // get new token
+                *status = scanner_get_token(pToken);
+                if (*status != SUCCESS) {
+                    return false;
                 }
-            }
-        }
-        else
-        {
-            return false;
+                continue;
+
+            case '>':
+                if (!symstack_reduce(&s)) {
+                    return false;
+                }
+                // do not get a new token
+                continue;
+
+            default:
+                // The table does not allow this combination
+                if (symstack_pop(&s).symbolType != S_EXPR) {
+                    return false;
+                }
+                if (symstack_pop(&s).symbolType != S_EMPTY) {
+                    return false;
+                }
+                return true;
         }
     }
 
     symstack_destroy(&s);
-    scanner_destroy_token(pToken);
-    status = scanner_get_token(pToken);
-    if (status != SUCCESS)
-    {
-        return false;
-    }
     return true;
 }

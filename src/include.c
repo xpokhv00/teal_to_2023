@@ -9,9 +9,8 @@
  * IFJ projekt 2021
  */
 
-#ifndef INCLUDE_H
-#define INCLUDE_H
+#include "include.h"
 
-extern const char *includeCode;
+const char *includeCode = ".IFJcode21\n"
+                          "JUMP %start0\n";
 
-#endif //INCLUDE_H

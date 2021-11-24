@@ -1,0 +1,220 @@
+.IFJcode21
+JUMP start
+
+################################# READS
+LABEL reads
+PUSHFRAME
+DEFVAR LF@return
+DEFVAR LF@readstr
+
+READ LF@readstr string
+
+# test : write LF@readstr
+
+MOVE LF@return LF@readstr
+
+POPFRAME
+RETURN
+############################### END READS
+
+############################### READI
+LABEL readi
+PUSHFRAME
+DEFVAR LF@return
+DEFVAR LF@readstr
+DEFVAR LF@rettype
+
+READ LF@readstr int
+TYPE LF@rettype LF@readstr
+
+JUMPIFEQ readiNil nil@nil LF@rettype
+
+MOVE LF@return LF@readstr
+
+POPFRAME
+RETURN
+
+LABEL readiNil
+
+MOVE LF@return nil@nil
+
+POPFRAME
+RETURN
+
+############################### END READI
+
+############################### READN
+LABEL readn
+PUSHFRAME
+DEFVAR LF@return
+DEFVAR LF@readstr
+DEFVAR LF@rettype
+
+READ LF@readstr float
+TYPE LF@rettype LF@readstr
+
+JUMPIFEQ readiNil nil@nil LF@rettype
+
+MOVE LF@return LF@readstr
+
+POPFRAME
+RETURN
+
+LABEL readiNil
+
+MOVE LF@return nil@nil
+
+POPFRAME
+RETURN
+############################### END READN
+
+############################### TOINTEGER
+LABEL tointeger
+PUSHFRAME
+DEFVAR LF@return
+DEFVAR LF@rettype
+
+TYPE LF@rettype LF@param0
+JUMPIFEQ tointegernil nil@nil LF@rettype
+
+FLOAT2INT LF@return LF@param0
+
+POPFRAME
+RETURN
+
+LABEL tointegernil
+MOVE LF@return nil@nil
+
+POPFRAME
+RETURN
+############################### END TOINTIGER
+
+############################### SUBSTR
+LABEL substr
+PUSHFRAME
+DEFVAR LF@areParamsCorrect
+DEFVAR LF@strlen
+DEFVAR LF@return
+STRLEN LF@strlen LF@param0
+
+LT LF@areParamsCorrect LF@param1 int@1
+JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+
+GT LF@areParamsCorrect LF@param1 LF@strlen
+JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+
+LT LF@areParamsCorrect LF@param2 int@1
+JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+
+LT LF@areParamsCorrect LF@param2 int@params1
+JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+
+GT LF@areParamsCorrect LF@param2 LF@strlen
+JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+
+JUMPIFEQ substrnil LF@param0 nil@nil
+JUMPIFEQ substrnil LF@param1 nil@nil
+JUMPIFEQ substrnil LF@param2 nil@nil
+
+# if we got here, everything is correct
+
+DEFVAR LF@tmp
+SUB LF@param1 int@1
+SUB LF@param2 int@1
+
+#while cycle, concat return and tmp value, tmp == getchar on position i, until i != j
+LABEL substrwhile
+GETCHAR LF@tmp LF@param0 LF@param1
+CONCAT LF@return LF@return LF@tmp
+ADD LF@param1 int@1
+LT LF@areParamsCorrect LF@param1 LF@param2
+JUMPIFEQ substrwhile LF@areParamsCorrect bool@true
+
+
+POPFRAME
+RETURN
+
+LABEL substrnil
+EXIT int@8
+
+LABEL substrempty
+MOVE LF@return string@
+POPFRAME
+RETURN
+############################### END SUBSTR
+
+############################### ORD
+LABEL substr
+PUSHFRAME
+DEFVAR LF@return
+DEFVAR LF@check
+DEFVAR LF@strlen
+
+JUMPIFEQ ordfail LF@param0 nil@nil
+JUMPIFEQ ordfail LF@param1 nil@nil
+STRLEN LF@strlen LF@param0
+
+GT LF@check LF@param1 LF@strlen
+JUMPIFEQ ordnil LF@check bool@true
+
+STRI2INT LF@return LF@param0 LF@param1
+
+POPFRAME
+RETURN
+
+
+LABEL ordnil
+MOVE LF@return nil@nil
+POPFRAME
+RETURN
+
+LABEL ordfail
+EXIT int@8
+############################### END ORD
+
+
+
+############################### CHR
+LABEL substr
+PUSHFRAME
+DEFVAR LF@return
+DEFVAR LF@tmp
+
+LT LF@tmp LF@param0 int@0
+JUMPIFEQ ordnil LF@check bool@true
+GT LF@tmp LF@param0 int@255
+JUMPIFEQ ordnil LF@check bool@true
+JUMPIFEQ chrerror LF@param0 nil@nil
+
+INT2CHAR LF@return LF@param0
+POPFRAME
+RETURN
+
+LABEL chrnil
+MOVE LF@return nil@nil
+POPFRAME
+RETURN
+
+LABEL chrerror
+EXIT int@8
+############################### END CHR
+
+LABEL start
+
+CREATEFRAME
+
+
+#CALL readn
+#CALL readi
+#DEFVAR TF@testtype
+#CALL reads
+#CALL tointeger
+#CALL substr
+#CALL ord
+#CALL chr
+TYPE TF@testtype TF@return
+
+#WRITE TF@return
+
+
+EXIT int@0

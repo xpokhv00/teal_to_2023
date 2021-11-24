@@ -451,6 +451,7 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                     ret = false;
                     break;
                 }
+                continue;
 
             case '<':
                 // do the shift operation

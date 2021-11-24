@@ -859,17 +859,11 @@ bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign) {
 
     switch (token.type) {
         case TOKEN_IDENTIFIER:;
-/*
+
+            // Add variable names from left side to list
             Type lValueType = st_token_to_type(&st, token);
-            list_first(&listAssign);
-            Type savedValue = list_get_active(&listAssign);
-            // Check if return type matches head
-            if (!can_assign(savedValue, lValueType)) {
-                status = ERR_SEMANTIC_FUNC;
-                break;
-            }
-*/
-            //list_append(listAssign);
+            list_append(&listAssign, lValueType);
+
             GET_NEW_TOKEN();
             ASSERT_NT(nt_l_value_list_next(fnPair, listAssign));
             found = true;
@@ -887,6 +881,11 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign) {
     switch (token.type) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
+
+            // Add variable names from left side to list
+            Type lValueType = st_token_to_type(&st, token);
+            list_append(&listAssign, lValueType);
+
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_l_value_list_next(fnPair, listAssign));

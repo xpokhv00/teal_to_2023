@@ -1,6 +1,19 @@
 .IFJcode21
 JUMP start
 
+################################# WRITE
+LABEL write
+PUSHFRAME
+
+WRITE LF@param0
+
+POPFRAME
+RETURN
+
+
+################################# WRITE ENDS
+
+
 ################################# READS
 LABEL reads
 PUSHFRAME
@@ -27,14 +40,14 @@ DEFVAR LF@rettype
 READ LF@readstr int
 TYPE LF@rettype LF@readstr
 
-JUMPIFEQ readiNil nil@nil LF@rettype
+JUMPIFEQ %readiNil nil@nil LF@rettype
 
 MOVE LF@return LF@readstr
 
 POPFRAME
 RETURN
 
-LABEL readiNil
+LABEL %readiNil
 
 MOVE LF@return nil@nil
 
@@ -53,14 +66,14 @@ DEFVAR LF@rettype
 READ LF@readstr float
 TYPE LF@rettype LF@readstr
 
-JUMPIFEQ readiNil nil@nil LF@rettype
+JUMPIFEQ %readnNil nil@nil LF@rettype
 
 MOVE LF@return LF@readstr
 
 POPFRAME
 RETURN
 
-LABEL readiNil
+LABEL %readnNil
 
 MOVE LF@return nil@nil
 
@@ -75,14 +88,14 @@ DEFVAR LF@return
 DEFVAR LF@rettype
 
 TYPE LF@rettype LF@param0
-JUMPIFEQ tointegernil nil@nil LF@rettype
+JUMPIFEQ %tointegernil nil@nil LF@rettype
 
 FLOAT2INT LF@return LF@param0
 
 POPFRAME
 RETURN
 
-LABEL tointegernil
+LABEL %tointegernil
 MOVE LF@return nil@nil
 
 POPFRAME
@@ -98,64 +111,65 @@ DEFVAR LF@return
 STRLEN LF@strlen LF@param0
 
 LT LF@areParamsCorrect LF@param1 int@1
-JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 
 GT LF@areParamsCorrect LF@param1 LF@strlen
-JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 
 LT LF@areParamsCorrect LF@param2 int@1
-JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 
-LT LF@areParamsCorrect LF@param2 int@params1
-JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+LT LF@areParamsCorrect LF@param2 LF@param1
+JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 
 GT LF@areParamsCorrect LF@param2 LF@strlen
-JUMPIFEQ substrempty LF@areParamsCorrect bool@true
+JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 
-JUMPIFEQ substrnil LF@param0 nil@nil
-JUMPIFEQ substrnil LF@param1 nil@nil
-JUMPIFEQ substrnil LF@param2 nil@nil
+JUMPIFEQ %substrnil LF@param0 nil@nil
+JUMPIFEQ %substrnil LF@param1 nil@nil
+JUMPIFEQ %substrnil LF@param2 nil@nil
 
 # if we got here, everything is correct
 
 DEFVAR LF@tmp
-SUB LF@param1 int@1
-SUB LF@param2 int@1
-
+SUB LF@param1 LF@param1 int@1
+SUB LF@param2 LF@param2 int@1
+MOVE LF@return string@
 #while cycle, concat return and tmp value, tmp == getchar on position i, until i != j
-LABEL substrwhile
+
+LABEL %substrwhile
 GETCHAR LF@tmp LF@param0 LF@param1
 CONCAT LF@return LF@return LF@tmp
-ADD LF@param1 int@1
+ADD LF@param1 LF@param1 int@1
 LT LF@areParamsCorrect LF@param1 LF@param2
-JUMPIFEQ substrwhile LF@areParamsCorrect bool@true
+JUMPIFEQ %substrwhile LF@areParamsCorrect bool@true
 
 
 POPFRAME
 RETURN
 
-LABEL substrnil
+LABEL %substrnil
 EXIT int@8
 
-LABEL substrempty
+LABEL %substrempty
 MOVE LF@return string@
 POPFRAME
 RETURN
 ############################### END SUBSTR
 
 ############################### ORD
-LABEL substr
+LABEL ord
 PUSHFRAME
 DEFVAR LF@return
 DEFVAR LF@check
 DEFVAR LF@strlen
 
-JUMPIFEQ ordfail LF@param0 nil@nil
-JUMPIFEQ ordfail LF@param1 nil@nil
+JUMPIFEQ %ordfail LF@param0 nil@nil
+JUMPIFEQ %ordfail LF@param1 nil@nil
 STRLEN LF@strlen LF@param0
 
 GT LF@check LF@param1 LF@strlen
-JUMPIFEQ ordnil LF@check bool@true
+JUMPIFEQ %ordnil LF@check bool@true
 
 STRI2INT LF@return LF@param0 LF@param1
 
@@ -163,39 +177,39 @@ POPFRAME
 RETURN
 
 
-LABEL ordnil
+LABEL %ordnil
 MOVE LF@return nil@nil
 POPFRAME
 RETURN
 
-LABEL ordfail
+LABEL %ordfail
 EXIT int@8
 ############################### END ORD
 
 
 
 ############################### CHR
-LABEL substr
+LABEL chr
 PUSHFRAME
 DEFVAR LF@return
 DEFVAR LF@tmp
 
 LT LF@tmp LF@param0 int@0
-JUMPIFEQ ordnil LF@check bool@true
+JUMPIFEQ %chrdnil LF@tmp bool@true
 GT LF@tmp LF@param0 int@255
-JUMPIFEQ ordnil LF@check bool@true
-JUMPIFEQ chrerror LF@param0 nil@nil
+JUMPIFEQ %chrdnil LF@tmp bool@true
+JUMPIFEQ %chrerror LF@param0 nil@nil
 
 INT2CHAR LF@return LF@param0
 POPFRAME
 RETURN
 
-LABEL chrnil
+LABEL %chrnil
 MOVE LF@return nil@nil
 POPFRAME
 RETURN
 
-LABEL chrerror
+LABEL %chrerror
 EXIT int@8
 ############################### END CHR
 
@@ -204,15 +218,20 @@ LABEL start
 CREATEFRAME
 
 
+#DEFVAR TF@param0
+#DEFVAR TF@param1
+#DEFVAR TF@param2
+#MOVE TF@param0 int@112
+#MOVE TF@param1 int@1
+#MOVE TF@param2 int@2
 #CALL readn
 #CALL readi
-#DEFVAR TF@testtype
 #CALL reads
 #CALL tointeger
 #CALL substr
 #CALL ord
 #CALL chr
-TYPE TF@testtype TF@return
+#TYPE TF@testtype TF@return
 
 #WRITE TF@return
 

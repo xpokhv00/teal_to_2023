@@ -45,7 +45,8 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared);
 bool nt_fn_body(HTabPair *fnPair);
 
 bool nt_var_decl();
-bool nt_var_decl_assign();
+
+bool nt_var_decl_assign(HTabPair *varPair);
 
 bool nt_assignment(HTabPair *fnPair);
 
@@ -612,12 +613,17 @@ bool nt_var_decl() {
             ASSERT_SUCCESS(st_add(&st, token, &varPair));
             varPair = st_lookup(&st, token.str);
 
+            // generate appropriate code
+            gen_print("DEFVAR ");
+            gen_print_var(token, &st);
+            gen_print("\n");
+
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
             varPair->value.varType = token_keyword_to_type(token.type);
             ASSERT_NT(nt_type());
-            ASSERT_NT(nt_var_decl_assign());
+            ASSERT_NT(nt_var_decl_assign(varPair));
             found = true;
             break;
 
@@ -627,7 +633,7 @@ bool nt_var_decl() {
     return found;
 }
 
-bool nt_var_decl_assign() {
+bool nt_var_decl_assign(HTabPair *varPair) {
     bool found = false;
 
     switch (token.type) {
@@ -643,6 +649,7 @@ bool nt_var_decl_assign() {
                 ASSERT_NT(nt_fn_call(false));
             } else {
                 ASSERT_NT(nt_expr(&token, &st, &status)); // TODO semantic check inside
+                gen_print("POPS LF@$%u\n", varPair->value.ID);
             }
             found = true;
             break;
@@ -919,11 +926,14 @@ bool nt_fn_call(bool discardReturn) {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
             GET_NEW_TOKEN();
-            gen_print("CREATEFRAME\n");
-            if (!nt_fn_call_params(callPair)) {
-                break;
+
+            if (!callPair->value.specialFn) {
+                gen_print("CREATEFRAME\n");
             }
-            gen_print("CALL %s\n", callPair->key);
+            ASSERT_NT(nt_fn_call_params(callPair));
+            if (!callPair->value.specialFn) {
+                gen_print("CALL %s\n", callPair->key);
+            }
 
             if (discardReturn) {
                 gen_print("CLEARS \n");
@@ -969,18 +979,20 @@ bool nt_fn_call_params(HTabPair *callPair) {
                 }
             }
             else {
-                // TODO for write function
+                if (!strcmp(callPair->key, "write")) {
+                    gen_print("WRITE ");
+                    gen_print_value(token, &st);
+                    gen_print("\n");
+                }
             }
 
             // move the argument into the temporary frame
-            gen_print("DEFVAR TF@%%param%d\n", list_active_index(&callPair->value.paramList));
-            gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
-            if (token.type == TOKEN_IDENTIFIER) {
-                gen_print("LF@%s", token.str);
-            } else {
-                gen_print_literal(token);
+            if (!callPair->value.specialFn) {
+                gen_print("DEFVAR TF@%%param%d\n", list_active_index(&callPair->value.paramList));
+                gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
+                gen_print_value(token, &st);
+                gen_print("\n");
             }
-            gen_print("\n");
 
             GET_NEW_TOKEN();
             found = nt_fn_call_params_next(callPair);
@@ -990,7 +1002,7 @@ bool nt_fn_call_params(HTabPair *callPair) {
             // <fn_decl_params> -> eps
             // there don't have to be any parameters
 
-            // Do this only for write function
+            // write function will not be checked
             if (!callPair->value.specialFn) {
                 // Check that the list is no longer active
                 list_first(&callPair->value.paramList);
@@ -1027,17 +1039,20 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
                 }
             }
             else {
-                // TODO for write function
+                if (!strcmp(callPair->key, "write")) {
+                    gen_print("WRITE ");
+                    gen_print_value(token, &st);
+                    gen_print("\n");
+                }
             }
 
             // move the argument into the temporary frame
-            gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
-            if (token.type == TOKEN_IDENTIFIER) {
-                gen_print("LF@%s", token.str);
-            } else {
-                gen_print_literal(token);
+            if (!callPair->value.specialFn) {
+                gen_print("DEFVAR TF@%%param%d\n", list_active_index(&callPair->value.paramList));
+                gen_print("MOVE TF@%%param%d ", list_active_index(&callPair->value.paramList));
+                gen_print_value(token, &st);
+                gen_print("\n");
             }
-            gen_print("\n");
 
             GET_NEW_TOKEN();
             // read another comma and parameter or eps

@@ -57,13 +57,13 @@ bool nt_while(HTabPair *fnPair);
 
 bool nt_return(HTabPair *fnPair);
 
-bool nt_r_value_list(bool emptyValid, HTabPair *fnPair);
+bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList listAssign);
 
-bool nt_r_value_list_next(HTabPair *fnPair);
+bool nt_r_value_list_next(HTabPair *fnPair, TypeList listAssign);
 
-bool nt_l_value_list(HTabPair *fnPair);
+bool nt_l_value_list(HTabPair *fnPair, TypeList list);
 
-bool nt_l_value_list_next(HTabPair *fnPair);
+bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign);
 bool nt_fn_call();
 bool nt_fn_call_params(HTabPair *callPair);
 bool nt_fn_call_params_next(HTabPair *callPair);
@@ -651,9 +651,10 @@ bool nt_assignment(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:
+        case TOKEN_IDENTIFIER:;
             // TODO - typelist, ktery poslu do leve a pak i do prave strany
-            ASSERT_NT(nt_l_value_list(fnPair));
+            TypeList listAssign = list_init();
+            ASSERT_NT(nt_l_value_list(fnPair, listAssign));
             ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
             GET_NEW_TOKEN();
 
@@ -669,7 +670,7 @@ bool nt_assignment(HTabPair *fnPair) {
                 ASSERT_NT(nt_fn_call());
             } else {
                 // TODO - typelist, checknout identitu
-                ASSERT_NT(nt_r_value_list(false, fnPair));
+                ASSERT_NT(nt_r_value_list(false, fnPair, listAssign));
             }
 
             found = true;
@@ -752,7 +753,7 @@ bool nt_return(HTabPair *fnPair) {
         case TOKEN_RETURN:
             // <return> -> TOKEN_RETURN <r_value_list>
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_r_value_list(true, fnPair));
+            ASSERT_NT(nt_r_value_list(true, fnPair, fnPair->value.returnList));
             found = true;
             break;
 
@@ -762,7 +763,7 @@ bool nt_return(HTabPair *fnPair) {
     return found;
 }
 
-bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
+bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
@@ -772,15 +773,14 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
         case TOKEN_STRING_LIT:
         case TOKEN_NIL:;
             // Cannot be a function
-
             // <r_value_list> -> <r_value> <r_value_list_next>
             ASSERT_NT(nt_expr(&token, &st, &status));
 /*
             // TODO - pockat na to co prijde z nt_expr
             // this is supposed to compare against expression
-            Type rValueType = st_token_to_type(&st, token);
-            list_first(&fnPair->value.returnList);
-            Type savedValue = list_get_active(&fnPair->value.returnList);
+            Type rValueType = st_token_to_type(&st, token); // spatne neni treba pouzit token
+            list_first(&listAssign);
+            Type savedValue = list_get_active(&listAssign);
             // Check if return type matches head
             if (!can_assign(savedValue, rValueType)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -788,15 +788,15 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
             }
 */
 
-            ASSERT_NT(nt_r_value_list_next(fnPair));
+            ASSERT_NT(nt_r_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
         default:
 
             // Check if number of returns head
-            list_first(&fnPair->value.returnList);
-            if (list_is_active(&fnPair->value.returnList)) {
+            list_first(&listAssign);
+            if (list_is_active(&listAssign)) {
                 // TODO return value nil
             }
 
@@ -808,21 +808,19 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
     return found;
 }
 
-bool nt_r_value_list_next(HTabPair *fnPair) {
+bool nt_r_value_list_next(HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
-
-
             ASSERT_NT(nt_expr(&token, &st, &status));
 /*
             // TODO - pockat na to co prijde z nt_expr
             // this is supposed to compare against expression
-            Type rValueType = st_token_to_type(&st, token);
-            list_next(&fnPair->value.returnList);
-            Type savedValue = list_get_active(&fnPair->value.returnList);
+            Type rValueType = st_token_to_type(&st, token); //spatne - nepouzivat token
+            list_next(&listAssign);
+            Type savedValue = list_get_active(&listAssign);
             // Check if parameter type matches the one from definition / declaration
             if (!can_assign(savedValue, rValueType)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -830,15 +828,15 @@ bool nt_r_value_list_next(HTabPair *fnPair) {
             }
 
 */
-            ASSERT_NT(nt_r_value_list_next(fnPair));
+            ASSERT_NT(nt_r_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
         default:
             // can be empty
 
-            list_next(&fnPair->value.returnList);
-            if (list_is_active(&fnPair->value.returnList)) {
+            list_next(&listAssign);
+            if (list_is_active(&listAssign)) {
                 // TODO return value nil
             }
 
@@ -848,24 +846,24 @@ bool nt_r_value_list_next(HTabPair *fnPair) {
     return found;
 }
 
-bool nt_l_value_list(HTabPair *fnPair) {
+bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
         case TOKEN_IDENTIFIER:;
-
-            // this is supposed to compare against expression
+/*
             Type lValueType = st_token_to_type(&st, token);
-            list_first(&fnPair->value.returnList);
-            Type savedValue = list_get_active(&fnPair->value.returnList);
+            list_first(&listAssign);
+            Type savedValue = list_get_active(&listAssign);
             // Check if return type matches head
             if (!can_assign(savedValue, lValueType)) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
             }
-
+*/
+            //list_append(listAssign);
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_l_value_list_next(fnPair));
+            ASSERT_NT(nt_l_value_list_next(fnPair, listAssign));
             found = true;
             break;
 
@@ -875,7 +873,7 @@ bool nt_l_value_list(HTabPair *fnPair) {
     return found;
 }
 
-bool nt_l_value_list_next(HTabPair *fnPair) {
+bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign) {
     bool found = false;
 
     switch (token.type) {
@@ -883,7 +881,7 @@ bool nt_l_value_list_next(HTabPair *fnPair) {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_l_value_list_next(fnPair));
+            ASSERT_NT(nt_l_value_list_next(fnPair, listAssign));
             found = true;
             break;
 

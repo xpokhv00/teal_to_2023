@@ -652,6 +652,7 @@ bool nt_assignment(HTabPair *fnPair) {
 
     switch (token.type) {
         case TOKEN_IDENTIFIER:
+            // TODO - typelist, ktery poslu do leve a pak i do prave strany
             ASSERT_NT(nt_l_value_list(fnPair));
             ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
             GET_NEW_TOKEN();
@@ -664,8 +665,10 @@ bool nt_assignment(HTabPair *fnPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
+                // TODO - typelist, checknout identitu
                 ASSERT_NT(nt_fn_call());
             } else {
+                // TODO - typelist, checknout identitu
                 ASSERT_NT(nt_r_value_list(false, fnPair));
             }
 
@@ -770,6 +773,10 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
         case TOKEN_NIL:;
             // Cannot be a function
 
+            // <r_value_list> -> <r_value> <r_value_list_next>
+            ASSERT_NT(nt_expr(&token, &st, &status));
+/*
+            // TODO - pockat na to co prijde z nt_expr
             // this is supposed to compare against expression
             Type rValueType = st_token_to_type(&st, token);
             list_first(&fnPair->value.returnList);
@@ -779,9 +786,7 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
             }
-
-            // <r_value_list> -> <r_value> <r_value_list_next>
-            ASSERT_NT(nt_expr(&token, &st, &status));
+*/
 
             ASSERT_NT(nt_r_value_list_next(fnPair));
             found = true;
@@ -810,6 +815,10 @@ bool nt_r_value_list_next(HTabPair *fnPair) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
 
+
+            ASSERT_NT(nt_expr(&token, &st, &status));
+/*
+            // TODO - pockat na to co prijde z nt_expr
             // this is supposed to compare against expression
             Type rValueType = st_token_to_type(&st, token);
             list_next(&fnPair->value.returnList);
@@ -820,7 +829,7 @@ bool nt_r_value_list_next(HTabPair *fnPair) {
                 break;
             }
 
-            ASSERT_NT(nt_expr(&token, &st, &status));
+*/
             ASSERT_NT(nt_r_value_list_next(fnPair));
             found = true;
             break;

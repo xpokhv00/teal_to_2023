@@ -646,11 +646,30 @@ bool nt_var_decl_assign(HTabPair *varPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
+                // Check if there is at least one return and it is the correct type
+                HTabPair *fnPair = st_lookup(&st, token.str);
+                int numReturns = list_count(&fnPair->value.returnList);
+                if (numReturns == 0) {
+                    status = ERR_SEMANTIC_FUNC;
+                    break;
+                }
+                // WARNING this might have side effects
+                list_first(&fnPair->value.returnList);
+                Type returnType = list_get_active(&fnPair->value.returnList);
+                if (returnType != varPair->value.varType) {
+                    status = ERR_SEMANTIC_EXPR;
+                    break;
+                }
+
                 ASSERT_NT(nt_fn_call(false));
+
+                for (unsigned i=0; i<numReturns-1; i++) {
+                    gen_print("POPS GF@_\n");
+                }
             } else {
                 ASSERT_NT(nt_expr(&token, &st, &status)); // TODO semantic check inside
-                gen_print("POPS LF@$%u\n", varPair->value.ID);
             }
+            gen_print("POPS LF@$%u\n", varPair->value.ID);
             found = true;
             break;
 
@@ -936,13 +955,10 @@ bool nt_fn_call(bool discardReturn) {
             }
 
             if (discardReturn) {
-                gen_print("CLEARS \n");
-                /*
                 unsigned count = list_count(&callPair->value.returnList);
-                for (int i=0; i<count; i++) {
-                    gen_print("POPS \n");
+                for (unsigned i=0; i<count; i++) {
+                    gen_print("POPS GF@_\n");
                 }
-                */
             }
 
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);

@@ -163,7 +163,8 @@ SymbolType tokentype_to_symboltype(TokenType tt) {
 
         case TOKEN_PAR_R:
             return S_PARR;
-
+        case TOKEN_GET_LENGTH:
+            return S_GETLEN;
         default:
             return S_NONE;
     }
@@ -194,6 +195,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_MULDIV:
                 case S_PARL:
                 case S_VALUE:
+                case S_GETLEN:
                     return '<';
                 default:
                     return 'e';
@@ -210,6 +212,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                     return '>';
                 case S_PARL:
                 case S_VALUE:
+                case S_GETLEN:
                     return '<';
                 default:
                     return 'e';
@@ -220,12 +223,14 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
-                case S_PARR:
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                case S_GETLEN:
                     return '<';
+                case S_PARR:
+                    return '=';
                 default:
                     return 'e';
             }
@@ -261,11 +266,14 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
-                case S_PARR:
                 case S_VALUE:
+                case S_GETLEN:
+                    return '<';
+                case S_PARR:
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                    return '>';
                 default:
                     return 'e';
             }
@@ -275,14 +283,35 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
+                case S_VALUE:
+                case S_COMPARE:
+                case S_GETLEN:
+                    return '<';
+                case S_PARR:
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
+                default:
+                    return 'e';
+            }
+
+        case S_GETLEN:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
                 case S_PARR:
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
+                case S_GETLEN:
                 case S_EMPTY:
+                    return '>';
+                case S_PARL:
+                    return '>';
                 default:
                     return 'e';
             }
+
 
         case S_EMPTY:
             switch (in) {
@@ -292,6 +321,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
+                case S_GETLEN:
                     return '<';
                 default:
                     return 'e';
@@ -354,12 +384,14 @@ bool symstack_reduce(SymStack *s) {
     // It is easier to match them to stack top
     // This table is dependent on zero initialization of rules, that are not specified
     static const Rule ruleTable[] = {
+            {.to={S_EXPR, S_GETLEN}, .fn=reduce_placeholder},
             {.to={S_VALUE}, .fn=reduce_value},
+            {.to={S_PARR, S_EXPR, S_PARL}, .fn=reduce_placeholder},
             {.to={S_EXPR, S_ADDSUB, S_EXPR}, .fn=reduce_addsub},
             {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
-            {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},
-            {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_placeholder},
-
+            {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},   // TO DO idk if this ever happens
+            {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_placeholder},
+            {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_placeholder},
     };
     int numRules = sizeof(ruleTable) / sizeof(Rule);
 

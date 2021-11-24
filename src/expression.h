@@ -35,6 +35,7 @@ typedef enum {
     S_PARL,
     S_PARR,
     S_HANDLE,
+    S_GETLEN,
     NUM_SYMBOLS,
 } SymbolType;
 

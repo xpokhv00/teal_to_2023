@@ -3,7 +3,8 @@ require "ifj21"
 global foo : function (string, integer) : string, integer
 
 function foo (a : string, b : integer) : string, integer
-    return param
+    b = b + b
+    return "hell",5
 end
 
 function concat (x : string, y : string) : string, integer

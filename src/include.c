@@ -240,7 +240,7 @@ const char *includeCode = ".IFJcode21\n"
                           "\n"
                           "LABEL %chrerror\n"
                           "EXIT int@8\n"
-                          "############################### END CHR";
+                          "############################### END CHR\n";
 
 #define SET_ATRIBUTES()   pair->value.varType = TYPE_NONE; \
                        pair->value.ID = st->idCounter++;\

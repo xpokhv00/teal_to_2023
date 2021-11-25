@@ -169,6 +169,8 @@ Status scanner_get_token(Token *pToken) {
             case SCANNER_STRING_START:
                 if (input == '"') {
                     state = SCANNER_STRING_FINAL;
+                } else if (input == '\\') {
+                    state = SCANNER_ESC_SEQ;
                 } else if (input >= ' ') {
                     state = SCANNER_STRING_VALUE;
                 } else {
@@ -197,7 +199,7 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_SEQ_1;
                 } else if (input == '2') {
                     state = SCANNER_SEQ_2;
-                } else if (input == 't' || input == 'n' || input == '"' || input == '/') {
+                } else if (input == 't' || input == 'n' || input == '"' || input == '\\') {
                     state = SCANNER_STRING_VALUE;
                 } else {
                     return ERR_LEXICAL;

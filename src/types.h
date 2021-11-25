@@ -48,6 +48,7 @@ Type list_get_active(TypeList *list);
 void list_destroy(TypeList *list);
 unsigned list_active_index(TypeList *list);
 unsigned list_count(TypeList *list);
+bool list_can_assign(TypeList *dstList, TypeList *srcList);
 bool can_assign(Type dst, Type src);
 
 #endif //TYPES_H

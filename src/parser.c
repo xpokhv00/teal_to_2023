@@ -62,9 +62,9 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *listAssign);
 
 bool nt_r_value_list_next(HTabPair *fnPair, TypeList *listAssign);
 
-bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign, SymStack *generateLater);
+bool nt_l_value_list(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater);
 
-bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign, SymStack *generateLater);
+bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater);
 
 bool nt_fn_call(bool discardReturn);
 bool nt_fn_call_params(HTabPair *callPair);
@@ -443,7 +443,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
     return found;
 }
 
-bool nt_fn_returns(HTabPair *pair, bool declared) {
+bool nt_fn_returns(HTabPair *pair, bool isDeclared) {
     bool found = false;
     list_first(&pair->value.returnList);
     switch (token.type) {
@@ -452,7 +452,7 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
             GET_NEW_TOKEN();
 
             Type returnType = token_keyword_to_type(token.type);
-            if (declared) {
+            if (isDeclared) {
                 // Check if return types from declaration match the ones from definition
                 Type saved = list_get_active(&pair->value.returnList);
                 if (saved != returnType) {
@@ -468,7 +468,7 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
             if (!nt_type()) {
                 break;
             }
-            if (!nt_fn_returns_next(pair, declared)) {
+            if (!nt_fn_returns_next(pair, isDeclared)) {
                 break;
             }
             found = true;
@@ -490,7 +490,7 @@ bool nt_fn_returns(HTabPair *pair, bool declared) {
     return found;
 }
 
-bool nt_fn_returns_next(HTabPair *pair, bool declared) {
+bool nt_fn_returns_next(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
@@ -499,7 +499,7 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
             GET_NEW_TOKEN();
 
             Type returnType = token_keyword_to_type(token.type);
-            if (declared) {
+            if (isDeclared) {
                 list_next(&pair->value.returnList);
                 // Get type of the active element
                 Type saved = list_get_active(&pair->value.returnList);
@@ -517,7 +517,7 @@ bool nt_fn_returns_next(HTabPair *pair, bool declared) {
             if (!nt_type()) {
                 break;
             }
-            if (!nt_fn_returns_next(pair, declared)) {
+            if (!nt_fn_returns_next(pair, isDeclared)) {
                 break;
             }
             found = true;
@@ -603,7 +603,7 @@ bool nt_var_decl() {
             // Checks if identifier already exists in symtable
             // If not creates one
             HTabPair *varPair = st_lookup(&st, token.str);
-            bool isDeclared = varPair != NULL;
+            bool isDeclared = (varPair != NULL);
             if (isDeclared) {
                 // Variable cannot be declared more than once
                 status = ERR_SEMANTIC_DEF;
@@ -613,7 +613,7 @@ bool nt_var_decl() {
             ASSERT_SUCCESS(st_add(&st, token, &varPair));
             varPair = st_lookup(&st, token.str);
 
-            // generate appropriate code
+            // Generate appropriate code
             gen_print("DEFVAR ");
             gen_print_var(token, &st);
             gen_print("\n");
@@ -621,7 +621,10 @@ bool nt_var_decl() {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
             GET_NEW_TOKEN();
+
+            // Set type of new variable
             varPair->value.varType = token_keyword_to_type(token.type);
+
             ASSERT_NT(nt_type());
             ASSERT_NT(nt_var_decl_assign(varPair));
             found = true;
@@ -646,9 +649,9 @@ bool nt_var_decl_assign(HTabPair *varPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                // Check if there is at least one return and it is the correct type
+                // Check if there is at least one return, and that it is the correct type
                 HTabPair *fnPair = st_lookup(&st, token.str);
-                int numReturns = list_count(&fnPair->value.returnList);
+                unsigned numReturns = list_count(&fnPair->value.returnList);
                 if (numReturns == 0) {
                     status = ERR_SEMANTIC_FUNC;
                     break;
@@ -663,7 +666,7 @@ bool nt_var_decl_assign(HTabPair *varPair) {
 
                 ASSERT_NT(nt_fn_call(false));
 
-                for (int i=0; i<numReturns-1; i++) {
+                for (unsigned i=0; i<numReturns-1; i++) {
                     gen_print("POPS GF@_\n");
                 }
             } else {
@@ -686,51 +689,63 @@ bool nt_assignment(HTabPair *fnPair) {
 
     switch (token.type) {
         case TOKEN_IDENTIFIER:;
-            // TODO - typelist, ktery poslu do leve a pak i do prave strany
             TypeList dstList = list_init();
 
-            // tokens of l-values will be stored here
+            // Tokens of l-values will be stored here
             SymStack generateLater;
             symstack_init(&generateLater);
-            ASSERT_NT(nt_l_value_list(fnPair, dstList, &generateLater));
+            ASSERT_NT(nt_l_value_list(fnPair, &dstList, &generateLater));
             ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
             GET_NEW_TOKEN();
 
-            // check if the identifier is a variable or a function
-            // get next token to know what we're dealing with
+            // Check if the identifier is a variable or a function
+            // Get next token to know what we're dealing with
             Token nextToken;
             ASSERT_SUCCESS(scanner_get_token(&nextToken));
             bool isFunction = (nextToken.type == TOKEN_PAR_L);
             scanner_unget_token(nextToken);
 
-            int actualReturns;
-            int neededReturns;
+            unsigned actualReturns;
+            unsigned neededReturns;
+            TypeList srcList = list_init();
+            HTabPair *calledFnPair;
             if (isFunction) {
-                // TODO - typelist, checknout identitu, dostatecny pocet returnu
-                HTabPair *calledFnPair = st_lookup(&st, token.str);
+                calledFnPair = st_lookup(&st, token.str);
                 actualReturns = list_count(&calledFnPair->value.returnList);
                 neededReturns = symstack_count(&generateLater);
 
                 ASSERT_NT(nt_fn_call(false));
             } else {
-                // TODO - typelist, checknout identitu
-                TypeList srcList = list_init();
                 ASSERT_NT(nt_r_value_list(false, fnPair, &srcList));
-
                 actualReturns = list_count(&srcList);
                 neededReturns = symstack_count(&generateLater);
-                list_destroy(&srcList);
             }
 
-            // semantic check needed for code generation
+            // Semantic check needed for code generation
             if (actualReturns < neededReturns) {
-                // TODO check if correct return
                 status = isFunction ? ERR_SEMANTIC_FUNC : ERR_SEMANTIC_OTHER;
                 break;
             }
+            else {
+                if (isFunction) {
+                    if (!list_can_assign(&dstList, &calledFnPair->value.returnList)) {
+                        status = ERR_SEMANTIC_FUNC;
+                        break;
+                    }
+                }
+                else {
+                    if (!list_can_assign(&dstList, &srcList)) {
+                        status = ERR_SEMANTIC_FUNC;
+                        break;
+                    }
+                }
+            }
+            list_destroy(&srcList);
+            list_destroy(&dstList);
+
             // if there are excess variables on the right, we will have to pop them
-            int popCount = actualReturns - neededReturns;
-            for (int i=0; i<popCount; i++) {
+            unsigned popCount = actualReturns - neededReturns;
+            for (unsigned i=0; i<popCount; i++) {
                 gen_print("POPS GF@_\n");
             }
             while (!symstack_is_empty(&generateLater)) {
@@ -839,7 +854,7 @@ bool nt_return(HTabPair *fnPair) {
     return found;
 }
 
-bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *listAssign) {
+bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *srcList) {
     bool found = false;
 
     switch (token.type) {
@@ -853,11 +868,11 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *listAssign) {
             Type exprType;
             ASSERT_NT(nt_expr(&token, &st, &status, &exprType));
 
-            if (listAssign) {
-                list_append(listAssign, exprType);
+            if (srcList) {
+                list_append(srcList, exprType);
             }
 
-            ASSERT_NT(nt_r_value_list_next(fnPair, listAssign));
+            ASSERT_NT(nt_r_value_list_next(fnPair, srcList));
             found = true;
             break;
 
@@ -870,7 +885,7 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *listAssign) {
     return found;
 }
 
-bool nt_r_value_list_next(HTabPair *fnPair, TypeList *listAssign) {
+bool nt_r_value_list_next(HTabPair *fnPair, TypeList *srcList) {
     bool found = false;
 
     switch (token.type) {
@@ -879,11 +894,11 @@ bool nt_r_value_list_next(HTabPair *fnPair, TypeList *listAssign) {
             Type exprType;
             ASSERT_NT(nt_expr(&token, &st, &status, &exprType));
 
-            if (listAssign) {
-                list_append(listAssign, exprType);
+            if (srcList) {
+                list_append(srcList, exprType);
             }
 
-            ASSERT_NT(nt_r_value_list_next(fnPair, listAssign));
+            ASSERT_NT(nt_r_value_list_next(fnPair, srcList));
             found = true;
             break;
 
@@ -895,15 +910,15 @@ bool nt_r_value_list_next(HTabPair *fnPair, TypeList *listAssign) {
     return found;
 }
 
-bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign, SymStack *generateLater) {
+bool nt_l_value_list(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater) {
     bool found = false;
 
     switch (token.type) {
         case TOKEN_IDENTIFIER:;
 
-            // Add variable names from left side to list
+            // Add variable types from left side to list
             Type lValueType = st_token_to_type(&st, token);
-            list_append(&listAssign, lValueType);
+            list_append(dstList, lValueType);
 
             // Add for generation
             Symbol s = { .token = token };
@@ -916,7 +931,7 @@ bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign, SymStack *generateLa
                 break;
             }
 
-            ASSERT_NT(nt_l_value_list_next(fnPair, listAssign, generateLater));
+            ASSERT_NT(nt_l_value_list_next(fnPair, dstList, generateLater));
             found = true;
             break;
 
@@ -926,16 +941,16 @@ bool nt_l_value_list(HTabPair *fnPair, TypeList listAssign, SymStack *generateLa
     return found;
 }
 
-bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign, SymStack *generateLater) {
+bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater) {
     bool found = false;
 
     switch (token.type) {
         case TOKEN_COMMA:
             GET_NEW_TOKEN();
 
-            // Add variable names from left side to list
+            // Add variable types from left side to list
             Type lValueType = st_token_to_type(&st, token);
-            list_append(&listAssign, lValueType);
+            list_append(dstList, lValueType);
 
             // Add for generation
             Symbol s = { .token = token };
@@ -949,7 +964,7 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList listAssign, SymStack *gener
                 break;
             }
 
-            ASSERT_NT(nt_l_value_list_next(fnPair, listAssign, generateLater));
+            ASSERT_NT(nt_l_value_list_next(fnPair, dstList, generateLater));
             found = true;
             break;
 

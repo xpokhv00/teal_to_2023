@@ -123,6 +123,23 @@ unsigned list_count(TypeList *list) {
     return i;
 }
 
+bool list_can_assign(TypeList *dstList, TypeList *srcList) {
+    list_first(dstList);
+    list_first(srcList);
+    Type dstType = list_get_active(srcList);
+    Type srcType = list_get_active(dstList);
+    while (can_assign(dstType, srcType)) {
+        list_next(dstList);
+        list_next(srcList);
+        dstType = list_get_active(srcList);
+        srcType = list_get_active(dstList);
+        if (!list_is_active(dstList) || !list_is_active(srcList)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool can_assign(Type dst, Type src) {
     if (dst == src) {
         return true;

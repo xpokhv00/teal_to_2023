@@ -539,12 +539,41 @@ Status reduce_get_length(SymStack *s) {
     return SUCCESS;
 }
 
+Status reduce_concatenate(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+
+    if (y.varType == STRING && x.varType == STRING) {
+        gen_print("LABEL concatenate\n");
+        gen_print("PUSHFRAME\n");
+
+        gen_print("POPS GF@a\n");
+        gen_print("POPS GF@b\n");
+
+        gen_print("CONCAT GF@c GF@b GF@a\n");
+        gen_print("PUSHS GF@c\n");
+
+        gen_print("POPFRAME\n");
+        gen_print("RETURN\n");
+    }
+    else {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    scanner_destroy_token(&op.token);
+
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=STRING };
+    symstack_push(s, newExpr);
+    return SUCCESS;
+}
+
 Status reduce_placeholder(SymStack *s) {
     Symbol y = symstack_pop(s);
     Symbol op = symstack_pop(s);
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
-    if (y.token.type == TOKEN_INTEGER_LIT && x.token.type != TOKEN_INTEGER_LIT )
 
     // TODO all the type checks and code generation
 
@@ -561,13 +590,13 @@ bool symstack_reduce(SymStack *s, Status *status) {
     // It is easier to match them to stack top
     // This table is dependent on zero initialization of rules, that are not specified
     static const Rule ruleTable[] = {
-            {.to={S_EXPR, S_GETLEN}, .fn=reduce_get_length},
             {.to={S_VALUE}, .fn=reduce_value},
+            {.to={S_EXPR, S_GETLEN}, .fn=reduce_get_length},
             {.to={S_PARR, S_EXPR, S_PARL}, .fn=reduce_parenthesis},
             {.to={S_EXPR, S_ADDSUB, S_EXPR}, .fn=reduce_addsub},
             {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
             {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},   // TO DO idk if this ever happens
-            {.to={S_EXPR, S_CONCAT, S_EXPR}, .fn=reduce_placeholder},
+            {.to={S_EXPR, S_CONCAT, S_EXPR}, .fn=reduce_concatenate},
             {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_placeholder},
             {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_placeholder},
     };

@@ -336,54 +336,135 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
     }
 }
 
-void reduce_value(SymStack *s) {
+Status reduce_value(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
     gen_print("PUSHS ");
     gen_print_value(x.token, st);// TODO all the type checks and code generation
     gen_print("\n");
-    symstack_push(s, GENERIC_EXPR);
+
+    Type exprType = st_token_to_type(st, x.token);
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=exprType };
+    scanner_destroy_token(&x.token);
+
+    symstack_push(s, newExpr);
+    return SUCCESS;
 }
 
-void reduce_addsub(SymStack *s) {
+Status reduce_addsub(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+
+    Type resultType;
+
+    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER);
+    bool yValid = (y.varType == INTEGER) || (y.varType == NUMBER);
+    if (xValid && yValid) {
+        // input expressions have valid types
+        // if they are both integers, we don't need implicit conversion
+        if (x.varType == INTEGER && y.varType == INTEGER) {
+            resultType = INTEGER;
+        } else {
+            // do the implicit conversion if needed
+            if (x.varType == INTEGER) {
+                gen_print("POPS GF@swap1\nINT2FLOATS\nPUSHS GF@swap1\n");
+            }
+            if (y.varType == INTEGER) {
+                gen_print("INT2FLOATS\n");
+            }
+            resultType = NUMBER;
+        }
+    } else {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    if (op.token.type == TOKEN_PLUS) {
+        gen_print("ADDS\n");
+    } else {
+        gen_print("SUBS\n");
+    }
+
+    scanner_destroy_token(&op.token);
+
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=resultType };
+    symstack_push(s, newExpr);
+    return SUCCESS;
+}
+
+Status reduce_muldiv(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+
+    Type resultType;
+
+    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER);
+    bool yValid = (y.varType == INTEGER) || (y.varType == NUMBER);
+    if (xValid && yValid) {
+        // input expressions have valid types
+        // if they are both integers, we don't need implicit conversion
+        if (x.varType == INTEGER && y.varType == INTEGER) {
+            resultType = INTEGER;
+        } else {
+            // do the implicit conversion if needed
+            if (x.varType == INTEGER) {
+                gen_print("POPS GF@swap1\nINT2FLOATS\nPUSHS GF@swap1\n");
+            }
+            if (y.varType == INTEGER) {
+                gen_print("INT2FLOATS\n");
+            }
+            resultType = NUMBER;
+        }
+    } else {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    if (op.token.type == TOKEN_MULTIPLY) {
+        gen_print("MULS\n");
+    } else {
+        gen_print("DIVS\n");
+    }
+
+    scanner_destroy_token(&op.token);
+
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=resultType };
+    symstack_push(s, newExpr);
+    return SUCCESS;
+}
+
+Status reduce_parenthesis(SymStack *s) {
+    Symbol parLeft = symstack_pop(s);
+    Symbol expr = symstack_pop(s);
+    Symbol parRight = symstack_pop(s);
+    symstack_pop(s); // handle
+    // TODO all the type checks and code generation
+
+    scanner_destroy_token(&parLeft.token);
+    scanner_destroy_token(&parRight.token);
+
+    symstack_push(s, expr);
+    return SUCCESS;
+}
+
+Status reduce_placeholder(SymStack *s) {
     Symbol y = symstack_pop(s);
     Symbol op = symstack_pop(s);
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
     // TODO all the type checks and code generation
-    gen_print("ADDS\n");
+
+    (void)y;
+    (void)x;
+    (void)op;
+
     symstack_push(s, GENERIC_EXPR);
+    return SUCCESS;
 }
 
-void reduce_muldiv(SymStack *s) {
-    Symbol y = symstack_pop(s);
-    Symbol op = symstack_pop(s);
-    Symbol x = symstack_pop(s);
-    symstack_pop(s); // handle
-    // TODO all the type checks and code generation
-    gen_print("MULS\n");
-    symstack_push(s, GENERIC_EXPR);
-}
-
-void reduce_parenthesis(SymStack *s) {
-    Symbol y = symstack_pop(s);
-    Symbol op = symstack_pop(s);
-    Symbol x = symstack_pop(s);
-    symstack_pop(s); // handle
-    // TODO all the type checks and code generation
-    symstack_push(s, GENERIC_EXPR);
-}
-
-void reduce_placeholder(SymStack *s) {
-    Symbol y = symstack_pop(s);
-    Symbol op = symstack_pop(s);
-    Symbol x = symstack_pop(s);
-    symstack_pop(s); // handle
-    // TODO all the type checks and code generation
-    symstack_push(s, GENERIC_EXPR);
-}
-
-bool symstack_reduce(SymStack *s) {
+bool symstack_reduce(SymStack *s, Status *status) {
     // WARNING: all the rules are written in reverse order
     // It is easier to match them to stack top
     // This table is dependent on zero initialization of rules, that are not specified
@@ -407,7 +488,11 @@ bool symstack_reduce(SymStack *s) {
                 if ((expected == S_NONE) && (actual==S_HANDLE)) {
                     // we've made it to the end of the rule
                     // so we can apply its function
-                    ruleTable[i].fn(s);
+                    Status returnStatus = ruleTable[i].fn(s);
+                    if (returnStatus != SUCCESS) {
+                        *status = returnStatus;
+                        return false;
+                    }
                     return true;
                 } else {
                     // move onto the next rule
@@ -472,7 +557,7 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
                 continue;
 
             case '>':
-                if (!symstack_reduce(&s)) {
+                if (!symstack_reduce(&s, status)) {
                     cont = false;
                     ret = false;
                     break;
@@ -485,16 +570,16 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
                 // the cycle will be ended
                 cont = false;
                 // filthy hack, might need to be fixed later
-                while (symstack_reduce(&s)) {
+                while (symstack_reduce(&s, status)) {
                     // reduce
                 }
                 // TODO definitely needs refactorin
                 // this is basically the same condition as the first one
-                if (symstack_pop(&s).symbolType != S_EXPR) {
+                if (symstack_top(&s).symbolType != S_EXPR) {
                     ret = false;
                     break;
                 }
-                if (symstack_pop(&s).symbolType != S_EMPTY) {
+                if (symstack_peek(&s, 1).symbolType != S_EMPTY) {
                     ret = false;
                     break;
                 }
@@ -503,8 +588,8 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
     }
 
     if (returnType) {
-        // TODO this will be the final expression's type
-        *returnType = NIL;
+        // Assign the final expression's type
+        *returnType = symstack_top(&s).varType;
     }
 
     symstack_destroy(&s);

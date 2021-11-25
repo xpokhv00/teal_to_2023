@@ -84,8 +84,9 @@ Status gen_print_literal(Token token) {
         case TOKEN_INTEGER_LIT:
             gen_print("int@%s", token.str);
             break;
-        case TOKEN_DOUBLE_LIT:
-            gen_print("float@%s", token.str);
+        case TOKEN_DOUBLE_LIT:;
+            double value = strtod(token.str, NULL);
+            gen_print("float@%a", value);
             break;
         case TOKEN_STRING_LIT:;
             // first, get rid of the quote symbols

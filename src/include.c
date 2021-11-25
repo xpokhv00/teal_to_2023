@@ -13,6 +13,8 @@
 
 const char *includeCode = ".IFJcode21\n"
                           "DEFVAR GF@_\n"
+                          "DEFVAR GF@swap1\n"
+                          "DEFVAR GF@swap2\n"
                           "JUMP %start0\n"
                           "################################# WRITE\n"
                           "LABEL write\n"

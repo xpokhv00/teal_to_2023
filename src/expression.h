@@ -54,7 +54,7 @@ typedef struct {
 typedef struct {
     SymbolType from;
     SymbolType to[MAX_RULE_LENGTH];
-    void (*fn)(SymStack *s);
+    Status (*fn)(SymStack *s);
 } Rule;
 
 void symstack_init(SymStack* s);

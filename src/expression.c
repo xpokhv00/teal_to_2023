@@ -518,15 +518,9 @@ Status reduce_get_length(SymStack *s) {
 
     if (expr.varType == STRING) {
 
-        gen_print("LABEL get_strlen\n");
-        gen_print("PUSHFRAME\n");
-
         gen_print("POPS GF@a\n");
         gen_print("STRLEN GF@b GF@a\n");
         gen_print("PUSHS GF@b\n");
-
-        gen_print("POPFRAME\n");
-        gen_print("RETURN\n");
     }
     else {
         return ERR_SEMANTIC_EXPR;
@@ -546,17 +540,11 @@ Status reduce_concatenate(SymStack *s) {
     symstack_pop(s); // handle
 
     if (y.varType == STRING && x.varType == STRING) {
-        gen_print("LABEL concatenate\n");
-        gen_print("PUSHFRAME\n");
-
         gen_print("POPS GF@a\n");
         gen_print("POPS GF@b\n");
 
         gen_print("CONCAT GF@c GF@b GF@a\n");
         gen_print("PUSHS GF@c\n");
-
-        gen_print("POPFRAME\n");
-        gen_print("RETURN\n");
     }
     else {
         return ERR_SEMANTIC_EXPR;
@@ -565,6 +553,94 @@ Status reduce_concatenate(SymStack *s) {
     scanner_destroy_token(&op.token);
 
     Symbol newExpr = { .symbolType = S_EXPR, .varType=STRING };
+    symstack_push(s, newExpr);
+    return SUCCESS;
+}
+
+Status reduce_compare(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+
+    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER) || (x.varType == BOOL) || (x.varType == STRING);
+    bool cond = x.varType == y.varType ;
+    if (xValid && cond) {
+        // comparing two identical varTypes
+        if (op.token.type == TOKEN_LT) {
+            gen_print("LTS\n");
+        } else if (op.token.type == TOKEN_GT) {
+            gen_print("GTS\n");
+        }
+        else if (op.token.type == TOKEN_LEQ) {
+            // get parameters
+            gen_print("POPS GF@a\n");
+            gen_print("POPS GF@b\n");
+
+            // compare parameters
+            gen_print("LT GF@c GF@a GF@b\n");
+            gen_print("EQ GF@d GF@a GF@b\n");
+
+            gen_print("PUSHS GF@c\n");
+            gen_print("PUSHS GF@d\n");
+            // if one is correct then inequality is correct
+            gen_print("ORS\n");
+        }
+        else if (op.token.type == TOKEN_GEQ) {
+            // get parameters
+            gen_print("POPS GF@a\n");
+            gen_print("POPS GF@b\n");
+
+            // compare parameters
+            gen_print("GT GF@c GF@a GF@b\n");
+            gen_print("EQ GF@d GF@a GF@b\n");
+
+            gen_print("PUSHS GF@c\n");
+            gen_print("PUSHS GF@d\n");
+            // if one is correct then inequality is correct
+            gen_print("ORS\n");
+        }
+
+    }
+    else {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    scanner_destroy_token(&op.token);
+
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=BOOL };
+    symstack_push(s, newExpr);
+    return SUCCESS;
+}
+
+Status reduce_equality(SymStack *s) {
+    Symbol y = symstack_pop(s);
+    Symbol op = symstack_pop(s);
+    Symbol x = symstack_pop(s);
+    symstack_pop(s); // handle
+
+    // TO DO do we have '==' TOKEN ?
+/*
+    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER) || (x.varType == BOOL) || (x.varType == STRING) || (x.varType == NIL);
+    bool yValid = (y.varType == INTEGER) || (y.varType == NUMBER) || (y.varType == BOOL) || (y.varType == STRING) || (y.varType == NIL);
+    bool nil_exist = (x.varType == NIL) || (y.varType == NIL );
+    if (xValid && yValid && (nil_exist || x.varType == y.varType)) {
+        if (op.token.type == TOKEN_sum_equality) { // <------------------------ FIX ME ----------------------------------
+            gen_print("EQS\n");
+        }
+        else if (op.token.type == TOKEN_NEQ) {
+            gen_print("EQS\n");
+            gen_print("NOTS\n");
+        }
+
+    }
+    else {
+        return ERR_SEMANTIC_EXPR;
+    }
+*/
+    scanner_destroy_token(&op.token);
+
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=BOOL };
     symstack_push(s, newExpr);
     return SUCCESS;
 }
@@ -597,8 +673,8 @@ bool symstack_reduce(SymStack *s, Status *status) {
             {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
             {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},   // TO DO idk if this ever happens
             {.to={S_EXPR, S_CONCAT, S_EXPR}, .fn=reduce_concatenate},
-            {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_placeholder},
-            {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_placeholder},
+            {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_compare},
+            {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_equality},
     };
     int numRules = sizeof(ruleTable) / sizeof(Rule);
 

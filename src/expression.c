@@ -167,8 +167,13 @@ SymbolType tokentype_to_symboltype(TokenType tt) {
 
         case TOKEN_PAR_R:
             return S_PARR;
+
         case TOKEN_GET_LENGTH:
             return S_GETLEN;
+
+        case TOKEN_CONCATENATE:
+            return S_CONCAT;
+
         default:
             return S_NONE;
     }
@@ -195,6 +200,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                case S_CONCAT:
                     return '>';
                 case S_MULDIV:
                 case S_PARL:
@@ -213,6 +219,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                case S_CONCAT:
                     return '>';
                 case S_PARL:
                 case S_VALUE:
@@ -232,6 +239,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_EQNEQ:
                 case S_EMPTY:
                 case S_GETLEN:
+                case S_CONCAT:
                     return '<';
                 case S_PARR:
                     return '=';
@@ -247,6 +255,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                case S_CONCAT:
                     return '>';
                 default:
                     return 'e';
@@ -260,6 +269,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_EMPTY:
+                case S_CONCAT:
                     return '>';
                 default:
                     return 'e';
@@ -272,6 +282,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_PARL:
                 case S_VALUE:
                 case S_GETLEN:
+                case S_CONCAT:
                     return '<';
                 case S_PARR:
                 case S_COMPARE:
@@ -309,13 +320,13 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_EQNEQ:
                 case S_GETLEN:
                 case S_EMPTY:
+                case S_CONCAT:
                     return '>';
                 case S_PARL:
-                    return '>';
+                    return '<';
                 default:
                     return 'e';
             }
-
 
         case S_EMPTY:
             switch (in) {
@@ -325,6 +336,25 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
+                case S_GETLEN:
+                case S_CONCAT:
+                    return '<';
+                default:
+                    return 'e';
+            }
+
+        case S_CONCAT:
+            switch (in) {
+                case S_ADDSUB:
+                case S_MULDIV:
+                case S_PARL:
+                case S_VALUE:
+                case S_EQNEQ:
+                case S_EMPTY:
+                case S_CONCAT:
+                    return '>';
+                case S_PARR:
+                case S_COMPARE:
                 case S_GETLEN:
                     return '<';
                 default:
@@ -449,11 +479,32 @@ Status reduce_parenthesis(SymStack *s) {
     return SUCCESS;
 }
 
+Status reduce_get_length(SymStack *s) {
+    Symbol expr = symstack_pop(s);
+    Symbol hashtag = symstack_pop(s);
+    symstack_pop(s); // handle
+
+    if (expr.varType == STRING) {
+        // TODO code generation
+    }
+    else {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    scanner_destroy_token(&hashtag.token);
+
+    Symbol newExpr = { .symbolType = S_EXPR, .varType=INTEGER };
+    symstack_push(s, newExpr);
+    return SUCCESS;
+}
+
 Status reduce_placeholder(SymStack *s) {
     Symbol y = symstack_pop(s);
     Symbol op = symstack_pop(s);
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
+    if (y.token.type == TOKEN_INTEGER_LIT && x.token.type != TOKEN_INTEGER_LIT )
+
     // TODO all the type checks and code generation
 
     (void)y;
@@ -469,12 +520,13 @@ bool symstack_reduce(SymStack *s, Status *status) {
     // It is easier to match them to stack top
     // This table is dependent on zero initialization of rules, that are not specified
     static const Rule ruleTable[] = {
-            {.to={S_EXPR, S_GETLEN}, .fn=reduce_placeholder},
+            {.to={S_EXPR, S_GETLEN}, .fn=reduce_get_length},
             {.to={S_VALUE}, .fn=reduce_value},
-            {.to={S_PARR, S_EXPR, S_PARL}, .fn=reduce_placeholder},
+            {.to={S_PARR, S_EXPR, S_PARL}, .fn=reduce_parenthesis},
             {.to={S_EXPR, S_ADDSUB, S_EXPR}, .fn=reduce_addsub},
             {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
             {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},   // TO DO idk if this ever happens
+            {.to={S_EXPR, S_CONCAT, S_EXPR}, .fn=reduce_placeholder},
             {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_placeholder},
             {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_placeholder},
     };

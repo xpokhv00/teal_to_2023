@@ -84,19 +84,51 @@ Status gen_print_literal(Token token) {
         case TOKEN_INTEGER_LIT:
             gen_print("int@%s", token.str);
             break;
+
         case TOKEN_DOUBLE_LIT:;
             double value = strtod(token.str, NULL);
             gen_print("float@%a", value);
             break;
+
         case TOKEN_STRING_LIT:;
-            // first, get rid of the quote symbols
-            size_t neededLength = strlen(token.str) + 1;
-            char* str = malloc(neededLength);
-            strcpy(str, &token.str[1]);
-            str[strlen(str) - 1] = '\0';
-            // TODO more complex conversion?
-            gen_print("string@%s", str);
+            // string with actual byte values, escape sequences will be decoded
+            char *in = token.str;
+            char *out = calloc(4*strlen(token.str)+10, sizeof(char));
+
+            int i = 1; // input index
+            while ((in[i] != '\0') && (in[i] != '\"')) {
+                char character = in[i];
+
+                if (in[i] == '\\') {
+                    i++;
+                    switch (in[i]) {
+                        case '\"':
+                        case '\\':
+                            character = in[i];
+                            break;
+
+                        case 'n':
+                            character = '\n';
+                            break;
+
+                        case 't':
+                            character = '\t';
+                            break;
+
+                        default:
+                            character = atoi(&in[i]);
+                            i += 2;
+                            break;
+                    }
+                }
+                sprintf(out + strlen(out),"\\%.3d", (int)character);
+                i++;
+            }
+
+            gen_print("string@%s", out);
+            free(out);
             break;
+
         case TOKEN_NIL:
             gen_print("nil@nil");
             break;

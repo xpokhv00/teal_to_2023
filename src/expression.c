@@ -79,6 +79,10 @@ bool symstack_is_empty(SymStack* s)
     return s->top <= -1;
 }
 
+int symstack_count(SymStack* s){
+    return s->top + 1;
+}
+
 void symstack_destroy(SymStack* s)
 {
     free(s->data);

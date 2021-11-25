@@ -62,6 +62,7 @@ Status symstack_push(SymStack* s, Symbol item);
 Symbol symstack_top(SymStack* s);
 Symbol symstack_pop(SymStack* s);
 bool symstack_is_empty(SymStack* s);
+int symstack_count(SymStack* s);
 void symstack_destroy(SymStack* s);
 
 // The only function, that is called from parser

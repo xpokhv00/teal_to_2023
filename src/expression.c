@@ -517,7 +517,16 @@ Status reduce_get_length(SymStack *s) {
     symstack_pop(s); // handle
 
     if (expr.varType == STRING) {
-        // TODO code generation
+
+        gen_print("LABEL get_strlen\n");
+        gen_print("PUSHFRAME\n");
+
+        gen_print("POPS GF@a\n");
+        gen_print("STRLEN GF@b GF@a\n");
+        gen_print("PUSHS GF@b\n");
+
+        gen_print("POPFRAME\n");
+        gen_print("RETURN\n");
     }
     else {
         return ERR_SEMANTIC_EXPR;

@@ -1,1 +1,4 @@
-build/*
+*.o
+src/compiler
+src/*.ifj21
+*.zip

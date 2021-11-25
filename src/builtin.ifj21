@@ -22,9 +22,9 @@ DEFVAR LF@readstr
 
 READ LF@readstr string
 
-# test : write LF@readstr
 
 MOVE LF@return LF@readstr
+PUSHS LF@return
 
 POPFRAME
 RETURN
@@ -43,6 +43,7 @@ TYPE LF@rettype LF@readstr
 JUMPIFEQ %readiNil nil@nil LF@rettype
 
 MOVE LF@return LF@readstr
+PUSHS LF@return
 
 POPFRAME
 RETURN
@@ -50,6 +51,7 @@ RETURN
 LABEL %readiNil
 
 MOVE LF@return nil@nil
+PUSHS LF@return
 
 POPFRAME
 RETURN
@@ -69,6 +71,7 @@ TYPE LF@rettype LF@readstr
 JUMPIFEQ %readnNil nil@nil LF@rettype
 
 MOVE LF@return LF@readstr
+PUSHS LF@return
 
 POPFRAME
 RETURN
@@ -76,6 +79,7 @@ RETURN
 LABEL %readnNil
 
 MOVE LF@return nil@nil
+PUSHS LF@return
 
 POPFRAME
 RETURN
@@ -91,12 +95,14 @@ TYPE LF@rettype LF@param0
 JUMPIFEQ %tointegernil nil@nil LF@rettype
 
 FLOAT2INT LF@return LF@param0
+PUSHS LF@return
 
 POPFRAME
 RETURN
 
 LABEL %tointegernil
 MOVE LF@return nil@nil
+PUSHS LF@return
 
 POPFRAME
 RETURN
@@ -144,7 +150,7 @@ ADD LF@param1 LF@param1 int@1
 LT LF@areParamsCorrect LF@param1 LF@param2
 JUMPIFEQ %substrwhile LF@areParamsCorrect bool@true
 
-
+PUSHS LF@return
 POPFRAME
 RETURN
 
@@ -153,6 +159,7 @@ EXIT int@8
 
 LABEL %substrempty
 MOVE LF@return string@
+PUSHS LF@return
 POPFRAME
 RETURN
 ############################### END SUBSTR
@@ -173,12 +180,15 @@ JUMPIFEQ %ordnil LF@check bool@true
 
 STRI2INT LF@return LF@param0 LF@param1
 
+PUSHS LF@return
 POPFRAME
 RETURN
 
 
 LABEL %ordnil
 MOVE LF@return nil@nil
+PUSHS LF@return
+
 POPFRAME
 RETURN
 
@@ -201,11 +211,15 @@ JUMPIFEQ %chrdnil LF@tmp bool@true
 JUMPIFEQ %chrerror LF@param0 nil@nil
 
 INT2CHAR LF@return LF@param0
+PUSHS LF@return
+
 POPFRAME
 RETURN
 
 LABEL %chrnil
 MOVE LF@return nil@nil
+PUSHS LF@return
+
 POPFRAME
 RETURN
 

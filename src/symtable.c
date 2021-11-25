@@ -142,7 +142,11 @@ void htab_clear(HTab *table) {
         while (temp_element != NULL)
         {
             HTabItem *current_element = temp_element->next;
+            // free each element
             free((char *)temp_element->htab_pair.key);
+            list_destroy(&temp_element->htab_pair.value.returnList);
+            list_destroy(&temp_element->htab_pair.value.paramList);
+
             free(temp_element);
             temp_element = current_element;
         }

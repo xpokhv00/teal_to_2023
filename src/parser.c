@@ -756,6 +756,7 @@ bool nt_assignment(HTabPair *fnPair) {
                 scanner_destroy_token(&varToken);
                 gen_print("\n");
             }
+            symstack_destroy(&generateLater);
 
             found = true;
             break;
@@ -1177,7 +1178,9 @@ Status parser_run() {
 
     st_init(&st);
     gen_init(stdout);
+    // run the parser
     bool valid = nt_prog();
+
     gen_destroy();
     st_destroy(&st);
 
@@ -1191,6 +1194,8 @@ Status parser_run() {
     if (status != SUCCESS) {
         fprintf(stderr, "error on line %u:%u:\n\n", token.lineNumber, token.characterNumber);
     }
+
+    scanner_destroy_token(&token);
     return status;
 }
 

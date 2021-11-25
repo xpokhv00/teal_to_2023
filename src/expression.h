@@ -67,7 +67,7 @@ void symstack_destroy(SymStack* s);
 
 // The only function, that is called from parser
 // It parses expressions, check for correct semantics and generates code
-bool nt_expr(Token *pToken, SymTab *st, Status *status);
+bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType);
 
 
 

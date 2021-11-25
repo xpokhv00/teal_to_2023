@@ -420,7 +420,7 @@ bool symstack_reduce(SymStack *s) {
 }
 
 
-bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
+bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
     st = symTab;
     SymStack s;
     symstack_init(&s);
@@ -488,7 +488,8 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                 while (symstack_reduce(&s)) {
                     // reduce
                 }
-
+                // TODO definitely needs refactorin
+                // this is basically the same condition as the first one
                 if (symstack_pop(&s).symbolType != S_EXPR) {
                     ret = false;
                     break;
@@ -499,6 +500,11 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status) {
                 }
                 ret = true;
         }
+    }
+
+    if (returnType) {
+        // TODO this will be the final expression's type
+        *returnType = NIL;
     }
 
     symstack_destroy(&s);

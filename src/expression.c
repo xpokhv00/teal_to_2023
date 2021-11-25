@@ -366,6 +366,16 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
     }
 }
 
+void retype_to_float() {
+    // retypes register a to float
+    int skip = gen_new_label();
+    gen_print("TYPE GF@b GF@a\n");
+    gen_print("JUMPIFEQ %%%d GF@b string@float\n", skip);
+    gen_print("JUMPIFEQ %%ERR_RT_NIL GF@b string@nil\n");
+    gen_print("INT2FLOAT GF@a GF@a\n");
+    gen_print("LABEL %%%d\n", skip);
+}
+
 Status reduce_value(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
@@ -397,13 +407,15 @@ Status reduce_addsub(SymStack *s) {
         if (x.varType == INTEGER && y.varType == INTEGER) {
             resultType = INTEGER;
         } else {
-            // do the implicit conversion if needed
-            if (x.varType == INTEGER) {
-                gen_print("POPS GF@swap1\nINT2FLOATS\nPUSHS GF@swap1\n");
-            }
-            if (y.varType == INTEGER) {
-                gen_print("INT2FLOATS\n");
-            }
+            // do the implicit conversion
+            gen_print("POPS GF@a\n");
+            retype_to_float();
+            gen_print("MOVE GF@swap1 GF@a\n");
+            gen_print("POPS GF@a\n");
+            retype_to_float();
+            gen_print("PUSHS GF@a\n");
+            gen_print("PUSHS GF@swap1\n");
+
             resultType = NUMBER;
         }
     } else {
@@ -439,13 +451,15 @@ Status reduce_muldiv(SymStack *s) {
         if (x.varType == INTEGER && y.varType == INTEGER) {
             resultType = INTEGER;
         } else {
-            // do the implicit conversion if needed
-            if (x.varType == INTEGER) {
-                gen_print("POPS GF@swap1\nINT2FLOATS\nPUSHS GF@swap1\n");
-            }
-            if (y.varType == INTEGER) {
-                gen_print("INT2FLOATS\n");
-            }
+            // do the implicit conversion
+            gen_print("POPS GF@a\n");
+            retype_to_float();
+            gen_print("MOVE GF@swap1 GF@a\n");
+            gen_print("POPS GF@a\n");
+            retype_to_float();
+            gen_print("PUSHS GF@a\n");
+            gen_print("PUSHS GF@swap1\n");
+
             resultType = NUMBER;
         }
     } else {
@@ -455,6 +469,24 @@ Status reduce_muldiv(SymStack *s) {
     if (op.token.type == TOKEN_MULTIPLY) {
         gen_print("MULS\n");
     } else {
+        gen_print("POPS GF@a\n");
+        // retypes register a to float
+        int floatLabel = gen_new_label();
+        int endLabel = gen_new_label();
+
+        gen_print("TYPE GF@b GF@a\n");
+        gen_print("JUMPIFEQ %%%d GF@b string@float\n", floatLabel);
+        // check for int
+        gen_print("JUMPIFEQ %%ERR_RT_DIVZERO GF@a int@0\n");
+        // JMP end
+        gen_print("JUMP %%%d\n", endLabel);
+        // check for float
+        gen_print("LABEL %%%d\n", floatLabel);
+        gen_print("JUMPIFEQ %%ERR_RT_DIVZERO GF@a float@0x0p+0\n");
+        // end
+        gen_print("LABEL %%%d\n", endLabel);
+        gen_print("PUSHS GF@a\n");
+
         gen_print("DIVS\n");
     }
 

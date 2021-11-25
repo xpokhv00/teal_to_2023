@@ -678,6 +678,7 @@ bool nt_var_decl_assign(HTabPair *varPair) {
 
         default:
             // the variable does not have to be assigned, which makes it nil
+            gen_print("MOVE LF@$%u nil@nil\n", varPair->value.ID);
             found = true;
             break;
     }

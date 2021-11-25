@@ -21,7 +21,8 @@ typedef enum {
     NIL,
     INTEGER,
     NUMBER,
-    STRING
+    STRING,
+    BOOL
 } Type;
 
 typedef struct typelistitem TypeListItem;

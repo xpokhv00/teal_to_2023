@@ -18,6 +18,7 @@ typedef struct {
     char *buffer;
     size_t bufferSize;
     FILE *out;
+    int labelCounter;
 } Printer;
 
 static Printer printer;
@@ -31,6 +32,8 @@ Status gen_init(FILE *outFile) {
     }
     printer.buffer[0] = '\0'; // empty string
     printer.bufferSize = BUFFER_MIN_FREE;
+
+    printer.labelCounter = 0;
     return SUCCESS;
 }
 
@@ -156,5 +159,9 @@ Status gen_print_var(Token token, SymTab* st) {
         gen_print("LF@$%u", pair->value.ID);
     }
     return SUCCESS;
+}
+
+int gen_new_label() {
+    return printer.labelCounter++;
 }
 

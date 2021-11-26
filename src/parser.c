@@ -774,12 +774,47 @@ bool nt_if(HTabPair *fnPair) {
         case TOKEN_IF:
             // <if> -> TOKEN_IF <expr> TOKEN_THEN <fn_body> <else> TOKEN_END
             GET_NEW_TOKEN();
-            ASSERT_NT(nt_expr(&token, &st, &status, NULL));
+            Type exprType = TYPE_NONE;
+            ASSERT_NT(nt_expr(&token, &st, &status, &exprType));
+
+            // CODE GENERATION
+            int boolLabel = gen_new_label();
+            int thenLabel = gen_new_label();
+            int elseLabel = gen_new_label();
+            int endLabel = gen_new_label();
+            // expression result will be on the top of the stack
+            // pop it into a
+            gen_print("POPS GF@a\n");
+            // save condition's type into b
+            gen_print("TYPE GF@b GF@a\n");
+            // if the expression is bool, jump to its label
+            gen_print("JUMPIFEQ %%%d GF@b string@bool\n", boolLabel);
+
+            // evaluate anything other than bool
+            // expression is false, if the type is nil
+            gen_print("JUMPIFEQ %%%d GF@b string@nil\n", elseLabel);
+            // otherwise it's true
+            gen_print("JUMP %%%d\n", thenLabel);
+
+            // evaluate bool
+            gen_print("LABEL %%%d\n", boolLabel);
+            // if expression is false, jump to else label
+            gen_print("JUMPIFEQ %%%d GF@a bool@false\n", elseLabel);
+            // if it is true, continue
+            gen_print("LABEL %%%d\n", thenLabel);
+
             ASSERT_TOKEN_TYPE(TOKEN_THEN);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_body(fnPair));
+
+            gen_print("JUMP %%%d\n", endLabel);
+            gen_print("LABEL %%%d\n", elseLabel);
+
             ASSERT_NT(nt_else(fnPair));
             ASSERT_TOKEN_TYPE(TOKEN_END);
+
+            gen_print("LABEL %%%d\n", endLabel);
+
             GET_NEW_TOKEN();
             found = true;
             break;

@@ -348,7 +348,6 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
-                case S_VALUE:
                 case S_EQNEQ:
                 case S_EMPTY:
                 case S_CONCAT:
@@ -356,6 +355,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_PARR:
                 case S_COMPARE:
                 case S_GETLEN:
+                case S_VALUE:
                     return '<';
                 default:
                     return 'e';
@@ -502,7 +502,6 @@ Status reduce_parenthesis(SymStack *s) {
     Symbol expr = symstack_pop(s);
     Symbol parRight = symstack_pop(s);
     symstack_pop(s); // handle
-    // TODO all the type checks and code generation
 
     scanner_destroy_token(&parLeft.token);
     scanner_destroy_token(&parRight.token);
@@ -619,13 +618,10 @@ Status reduce_equality(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
 
-    // TO DO do we have '==' TOKEN ?
-/*
-    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER) || (x.varType == BOOL) || (x.varType == STRING) || (x.varType == NIL);
-    bool yValid = (y.varType == INTEGER) || (y.varType == NUMBER) || (y.varType == BOOL) || (y.varType == STRING) || (y.varType == NIL);
+
     bool nil_exist = (x.varType == NIL) || (y.varType == NIL );
-    if (xValid && yValid && (nil_exist || x.varType == y.varType)) {
-        if (op.token.type == TOKEN_sum_equality) { // <------------------------ FIX ME ----------------------------------
+    if (nil_exist || x.varType == y.varType) {
+        if (op.token.type == TOKEN_EQUALS) {
             gen_print("EQS\n");
         }
         else if (op.token.type == TOKEN_NEQ) {
@@ -637,7 +633,7 @@ Status reduce_equality(SymStack *s) {
     else {
         return ERR_SEMANTIC_EXPR;
     }
-*/
+
     scanner_destroy_token(&op.token);
 
     Symbol newExpr = { .symbolType = S_EXPR, .varType=BOOL };

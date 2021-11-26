@@ -1,4 +1,5 @@
 *.o
 src/compiler
-src/*.ifj21
+src/ic21int
+src/out
 *.zip

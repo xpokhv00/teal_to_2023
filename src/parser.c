@@ -614,9 +614,7 @@ bool nt_var_decl() {
             varPair = st_lookup(&st, token.str);
 
             // Generate appropriate code
-            gen_print("DEFVAR ");
-            gen_print_var(token, &st);
-            gen_print("\n");
+            gen_prepend("DEFVAR LF@$%u\n", varPair->value.ID);
 
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_COLON);
@@ -774,8 +772,7 @@ bool nt_if(HTabPair *fnPair) {
         case TOKEN_IF:
             // <if> -> TOKEN_IF <expr> TOKEN_THEN <fn_body> <else> TOKEN_END
             GET_NEW_TOKEN();
-            Type exprType = TYPE_NONE;
-            ASSERT_NT(nt_expr(&token, &st, &status, &exprType));
+            ASSERT_NT(nt_expr(&token, &st, &status, NULL));
 
             // CODE GENERATION
             int boolLabel = gen_new_label();
@@ -851,10 +848,32 @@ bool nt_while(HTabPair *fnPair) {
         case TOKEN_WHILE:
             // <while> -> TOKEN_WHILE <expr> TOKEN_DO <fn_body> TOKEN_END
             GET_NEW_TOKEN();
+
+            // CODE GENERATION
+            int evalLabel = gen_new_label();
+            int doLabel = gen_new_label();
+            int endLabel = gen_new_label();
+            gen_print("LABEL %%%d\n", evalLabel);
+
             ASSERT_NT(nt_expr(&token, &st, &status, NULL));
+
+            gen_conditional(doLabel, endLabel);
+            gen_print("LABEL %%%d\n", doLabel);
+            // special buffering for while
+            // DEFVAR instructions will be printed here, effectively
+            gen_buffer_start();
+
+            // execute the body of the while
             ASSERT_TOKEN_TYPE(TOKEN_DO);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_body(fnPair));
+
+            gen_buffer_stop();
+            // evaluate the condition
+            gen_print("JUMP %%%d\n", evalLabel);
+            // end the cycle
+            gen_print("LABEL %%%d\n", endLabel);
+
             ASSERT_TOKEN_TYPE(TOKEN_END);
             GET_NEW_TOKEN();
             found = true;

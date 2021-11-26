@@ -14,7 +14,7 @@
 #define BUFFER_MIN_FREE 1024
 
 typedef struct {
-    bool buffering;
+    int bufferLevels;
     char *buffer;
     size_t bufferSize;
     FILE *out;
@@ -25,7 +25,7 @@ static Printer printer;
 
 Status gen_init(FILE *outFile) {
     printer.out = outFile;
-    printer.buffering = false;
+    printer.bufferLevels = 0;
     printer.buffer = malloc(BUFFER_MIN_FREE);
     if (printer.buffer == NULL) {
         return ERR_INTERNAL;
@@ -38,19 +38,22 @@ Status gen_init(FILE *outFile) {
 }
 
 void gen_buffer_start() {
-    printer.buffering = true;
+    printer.bufferLevels++;
 }
 
 void gen_buffer_stop() {
-    fprintf(printer.out, "%s", printer.buffer);
-    printer.buffering = false;
-    printer.buffer[0] = '\0'; // empty string
+    printer.bufferLevels--;
+    if (printer.bufferLevels == 0) {
+        fprintf(printer.out, "%s", printer.buffer);
+        printer.buffer[0] = '\0'; // empty string
+    }
 }
 
 Status gen_print(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    if (printer.buffering) {
+
+    if (printer.bufferLevels > 0) {
         // reallocate if not enough space
         size_t n = printer.bufferSize - strlen(printer.buffer);
         if (n < BUFFER_MIN_FREE) {
@@ -61,10 +64,12 @@ Status gen_print(const char *format, ...) {
             }
             printer.buffer = tmp;
         }
-        vsnprintf(printer.buffer, BUFFER_MIN_FREE, format, args);
+        char *end = printer.buffer + strlen(printer.buffer);
+        vsnprintf(end, BUFFER_MIN_FREE, format, args);
     } else {
         vfprintf(printer.out, format, args);
     }
+
     va_end(args);
     return SUCCESS;
 }
@@ -163,5 +168,32 @@ Status gen_print_var(Token token, SymTab* st) {
 
 int gen_new_label() {
     return printer.labelCounter++;
+}
+
+Status gen_conditional(int trueLabel, int falseLabel) {
+    int boolLabel = gen_new_label();
+
+    // expression result will be on the top of the stack
+    // pop it into a
+    gen_print("POPS GF@a\n");
+    // save condition's type into b
+    gen_print("TYPE GF@b GF@a\n");
+    // if the expression is bool, jump to its label
+    gen_print("JUMPIFEQ %%%d GF@b string@bool\n", boolLabel);
+
+    // evaluate anything other than bool
+    // expression is false, if the type is nil
+    gen_print("JUMPIFEQ %%%d GF@b string@nil\n", falseLabel);
+    // otherwise it's true
+    gen_print("JUMP %%%d\n", trueLabel);
+
+    // evaluate bool
+    gen_print("LABEL %%%d\n", boolLabel);
+    // if expression is false, jump to else label
+    gen_print("JUMPIFEQ %%%d GF@a bool@false\n", falseLabel);
+    // if it is true, jump to true label
+    gen_print("JUMP %%%d\n", trueLabel);
+
+    return SUCCESS;
 }
 

@@ -1,0 +1,2 @@
+A program with as little whitespaces as possible.
+It tries to break the scanner.

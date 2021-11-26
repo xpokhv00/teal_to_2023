@@ -146,6 +146,7 @@ SymbolType tokentype_to_symboltype(TokenType tt) {
 
         case TOKEN_MULTIPLY:
         case TOKEN_DIVIDE:
+        case TOKEN_INT_DIVIDE:
             return S_MULDIV;
 
         case TOKEN_PLUS:

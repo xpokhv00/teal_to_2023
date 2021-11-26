@@ -15,8 +15,16 @@ function cleanup() {
     rm -f $TMP_DIR/compiler_stderr $TMP_DIR/interpreter_stderr $TMP_DIR/output
 }
 
-verbose=""
+function show() {
+    for test in "$TEST_DIR"/*; do
+        echo -e "$(basename "$test")$DIM"
+        cat "$test"/description.txt
+        echo -e "$NOCOLOR"
+    done
+}
+
 [ "$1" ] && [ "$1" = "-v" ] || [ "$1" = "--verbose" ] && verbose="1"
+[ "$1" ] && [ "$1" = "-s" ] || [ "$1" = "--show" ] && show && exit 0
 
 numTests=0
 numTestsPassed=0
@@ -57,12 +65,14 @@ for test in "$TEST_DIR"/*; do
         numTestsPassed=$((numTestsPassed+1))
     else
         echo -e "$RED$CROSS $(basename "$test")$NOCOLOR"
-        # Print this only in verbose mode
-        echo -ne "$DIM"
 
+        # Print this only in verbose mode
         if [ $verbose ]
         then
             # Print more detailed error info
+            echo -ne "$DIM"
+            cat "$test"/description.txt
+
             if [ "$expectedReturn" -eq 0 ]
             then
                 if [ $compilerReturn -ne 0 ]

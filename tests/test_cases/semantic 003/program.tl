@@ -1,7 +1,7 @@
 require "ifj21"
 
 function main(a:number)
-    local b:integer = a
+    local b:number = a
     b = b+1
     write(b)
 end

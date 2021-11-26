@@ -23,8 +23,42 @@ function show() {
     done
 }
 
-[ "$1" ] && [ "$1" = "-v" ] || [ "$1" = "--verbose" ] && verbose="1"
-[ "$1" ] && [ "$1" = "-s" ] || [ "$1" = "--show" ] && show && exit 0
+function generate() {
+    test="$TEST_DIR"/"$1"
+    # If any of the crucial files is missing, exit
+    [ -f "$test"/program.tl ] || {
+        echo "Cannot generate, $test/program.tl is missing"
+        exit 1
+    }
+
+    touch "$test"/input
+    touch "$test"/input
+
+    # Ask user to enter description
+    [ -f "$test"/description.txt ] || {
+        echo "The description file is missing. Enter it now:"
+        read -r
+        echo "${REPLY}" >"$test"/description.txt
+    }
+
+    # Run the compiler
+    ./$EXEC_DIR/compiler <"$test"/program.tl >$TMP_DIR/out.IFJcode21 2>$TMP_DIR/compiler_stderr
+    compilerReturn=$?
+
+    # Did the compiler finish successfully?
+    if [ $compilerReturn -eq 0 ]
+    then
+        # Run the interpreter
+        ./$EXEC_DIR/ic21int $TMP_DIR/out.IFJcode21 <"$test"/input >"$test"/output 2>$TMP_DIR/interpreter_stderr
+        interpreterReturn=$?
+        echo $interpreterReturn > "$test"/return
+    else
+        echo $interpreterReturn > "$test"/return
+    fi
+}
+
+[ "$1" ] && [ "$1" = "s" ] || [ "$1" = "show" ] && show && exit 0
+[ "$1" ] && [ "$1" = "g" ] || [ "$1" = "generate" ] && generate "$2" && exit 0
 
 numTests=0
 numTestsPassed=0
@@ -64,41 +98,36 @@ for test in "$TEST_DIR"/*; do
         echo -e "$GREEN$TICK $(basename "$test")$NOCOLOR"
         numTestsPassed=$((numTestsPassed+1))
     else
-        echo -e "$RED$CROSS $(basename "$test")$NOCOLOR"
+        echo -e "$RED$CROSS $(basename "$test")$DIM"
 
-        # Print this only in verbose mode
-        if [ $verbose ]
+        # Print more detailed error info
+        cat "$test"/description.txt
+
+        if [ "$expectedReturn" -eq 0 ]
         then
-            # Print more detailed error info
-            echo -ne "$DIM"
-            cat "$test"/description.txt
-
-            if [ "$expectedReturn" -eq 0 ]
+            if [ $compilerReturn -ne 0 ]
             then
-                if [ $compilerReturn -ne 0 ]
-                then
-                    echo "Compiler exited with error $compilerReturn:"
-                    cat $TMP_DIR/compiler_stderr
-                else
-                    if [ $interpreterReturn -ne 0 ]
-                    then
-                        echo "Interpreter exited with error $interpreterReturn:"
-                        cat $TMP_DIR/interpreter_stderr
-                    else
-                        echo Expected output:
-                        cat "$test"/output
-                        echo Output:
-                        cat $TMP_DIR/output
-                    fi
-                fi
+                echo "Compiler exited with error $compilerReturn:"
+                cat $TMP_DIR/compiler_stderr
             else
-                echo "Program was supposed to fail, but with different exit code"
-                echo "Expected return: $expectedReturn" \
-                && echo "Compiler return: $compilerReturn" \
-                && [ $compilerReturn -eq 0 ] && echo "Interpreter return: $interpreterReturn"
+                if [ $interpreterReturn -ne 0 ]
+                then
+                    echo "Interpreter exited with error $interpreterReturn:"
+                    cat $TMP_DIR/interpreter_stderr
+                else
+                    echo Expected output:
+                    cat "$test"/output
+                    echo Output:
+                    cat $TMP_DIR/output
+                fi
             fi
-            echo -ne "$NOCOLOR"
+        else
+            echo "Program was supposed to fail, but with different exit code"
+            echo "Expected return: $expectedReturn" \
+            && echo "Compiler return: $compilerReturn" \
+            && [ $compilerReturn -eq 0 ] && echo "Interpreter return: $interpreterReturn"
         fi
+        echo -ne "$NOCOLOR"
     fi
     numTests=$((numTests+1))
 done
@@ -109,6 +138,4 @@ then
     echo -e "\n$GREEN$TICK ALL TESTS PASSED$NOCOLOR"
 else
     echo -e "\n$RED$CROSS SOME TESTS FAILED ($numTestsPassed/$numTests passed)$NOCOLOR"
-    [ -z $verbose ] && echo -e "${DIM}Run with -v | --verbose to outputs of failed tests.$NOCOLOR"
-    echo -ne "$NOCOLOR"
 fi

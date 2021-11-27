@@ -11,10 +11,9 @@
 
 #include "expression.h"
 
-const Symbol EMPTY_SYMBOL = { .symbolType = S_EMPTY };
-const Symbol HANDLE = { .symbolType = S_HANDLE };
-const Symbol GENERIC_EXPR = { .symbolType = S_EXPR, .varType=INTEGER };
-const Symbol NONE_SYMBOL = { .symbolType = S_NONE };
+static const Symbol EMPTY_SYMBOL = { .symbolType = S_EMPTY };
+static const Symbol HANDLE = { .symbolType = S_HANDLE };
+static const Symbol NONE_SYMBOL = { .symbolType = S_NONE };
 
 // for all the functions to use
 static SymTab *st;
@@ -367,6 +366,8 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
     }
 }
 
+// Dynamically converts value in register a
+// {int, float} -> float
 void retype_to_float() {
     // retypes register a to float
     int skip = gen_new_label();
@@ -375,6 +376,94 @@ void retype_to_float() {
     gen_print("JUMPIFEQ %%ERR_RT_NIL GF@b string@nil\n");
     gen_print("INT2FLOAT GF@a GF@a\n");
     gen_print("LABEL %%%d\n", skip);
+}
+
+// Decides whether the operands are compatible
+// Also generates code for int to float conversion, if needed
+// The resulting type can be retrieved by pointer
+bool makeOperandsCompatible(Type x, Type y, Type *result) {
+    Type res;
+
+    if ((x == STRING) && (y == STRING)) {
+        res = STRING;
+        goto FOUND;
+    }
+
+    if ((x == INTEGER) && (y == INTEGER)) {
+        res = INTEGER;
+        goto FOUND;
+    }
+
+    // if the types do not match exactly, they can still be numbers
+    bool xNumber = (x == INTEGER) || (x == NUMBER);
+    bool yNumber = (y == INTEGER) || (y == NUMBER);
+
+    if (xNumber && yNumber) {
+        // convert both to float
+        gen_print("POPS GF@a\n");
+        retype_to_float();
+        gen_print("MOVE GF@swap1 GF@a\n");
+        gen_print("POPS GF@a\n");
+        retype_to_float();
+        gen_print("PUSHS GF@a\n");
+        gen_print("PUSHS GF@swap1\n");
+        res = NUMBER;
+        goto FOUND;
+    }
+    // Out of options
+    return false;
+
+    FOUND:
+    if (result) {
+        *result = res;
+    }
+    return true;
+}
+
+// Dynamically check the top of the stack for being zero
+// works for int, float
+// this function is used for division
+void checkNotZero() {
+    int floatLabel = gen_new_label();
+    int endLabel = gen_new_label();
+
+    gen_print("POPS GF@a\n");
+    gen_print("TYPE GF@b GF@a\n");
+    gen_print("JUMPIFEQ %%%d GF@b string@float\n", floatLabel);
+    // check for int
+    gen_print("JUMPIFEQ %%ERR_RT_DIVZERO GF@a int@0\n");
+    // JMP end
+    gen_print("JUMP %%%d\n", endLabel);
+    // check for float
+    gen_print("LABEL %%%d\n", floatLabel);
+    gen_print("JUMPIFEQ %%ERR_RT_DIVZERO GF@a float@0x0p+0\n");
+    // end
+    gen_print("LABEL %%%d\n", endLabel);
+    gen_print("PUSHS GF@a\n");
+}
+
+// Dynamically check the top of the stack for being nil
+// This is used everywhere
+void checkTopNotNil() {
+    gen_print("POPS GF@a\n");
+    gen_print("TYPE GF@b GF@a\n");
+    gen_print("JUMPIFEQ %%ERR_RT_NIL GF@b string@nil\n");
+    gen_print("PUSHS GF@a\n");
+}
+
+
+// Checks two top elements for being nil
+void checkOperandsNotNil() {
+    gen_print("POPS GF@a\n");
+    gen_print("POPS GF@c\n");
+
+    gen_print("TYPE GF@b GF@a\n");
+    gen_print("JUMPIFEQ %%ERR_RT_NIL GF@b string@nil\n");
+    gen_print("TYPE GF@b GF@c\n");
+    gen_print("JUMPIFEQ %%ERR_RT_NIL GF@b string@nil\n");
+
+    gen_print("PUSHS GF@c\n");
+    gen_print("PUSHS GF@a\n");
 }
 
 Status reduce_value(SymStack *s) {
@@ -400,28 +489,15 @@ Status reduce_addsub(SymStack *s) {
 
     Type resultType;
 
-    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER);
-    bool yValid = (y.varType == INTEGER) || (y.varType == NUMBER);
-    if (xValid && yValid) {
-        // input expressions have valid types
-        // if they are both integers, we don't need implicit conversion
-        if (x.varType == INTEGER && y.varType == INTEGER) {
-            resultType = INTEGER;
-        } else {
-            // do the implicit conversion
-            gen_print("POPS GF@a\n");
-            retype_to_float();
-            gen_print("MOVE GF@swap1 GF@a\n");
-            gen_print("POPS GF@a\n");
-            retype_to_float();
-            gen_print("PUSHS GF@a\n");
-            gen_print("PUSHS GF@swap1\n");
-
-            resultType = NUMBER;
-        }
-    } else {
+    if (!makeOperandsCompatible(x.varType, y.varType, &resultType)) {
         return ERR_SEMANTIC_EXPR;
     }
+
+    if ((resultType != INTEGER) && (resultType!= NUMBER)) {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    checkOperandsNotNil();
 
     if (op.token.type == TOKEN_PLUS) {
         gen_print("ADDS\n");
@@ -444,51 +520,36 @@ Status reduce_muldiv(SymStack *s) {
 
     Type resultType;
 
-    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER);
-    bool yValid = (y.varType == INTEGER) || (y.varType == NUMBER);
-    if (xValid && yValid) {
-        // input expressions have valid types
-        // if they are both integers, we don't need implicit conversion
-        if (x.varType == INTEGER && y.varType == INTEGER) {
-            resultType = INTEGER;
-        } else {
-            // do the implicit conversion
-            gen_print("POPS GF@a\n");
-            retype_to_float();
-            gen_print("MOVE GF@swap1 GF@a\n");
-            gen_print("POPS GF@a\n");
-            retype_to_float();
-            gen_print("PUSHS GF@a\n");
-            gen_print("PUSHS GF@swap1\n");
+    checkOperandsNotNil();
 
-            resultType = NUMBER;
-        }
-    } else {
+    if (!makeOperandsCompatible(x.varType, y.varType, &resultType)) {
         return ERR_SEMANTIC_EXPR;
     }
 
-    if (op.token.type == TOKEN_MULTIPLY) {
-        gen_print("MULS\n");
-    } else {
-        gen_print("POPS GF@a\n");
-        // retypes register a to float
-        int floatLabel = gen_new_label();
-        int endLabel = gen_new_label();
+    if ((resultType != INTEGER) && (resultType != NUMBER)) {
+        return ERR_SEMANTIC_EXPR;
+    }
 
-        gen_print("TYPE GF@b GF@a\n");
-        gen_print("JUMPIFEQ %%%d GF@b string@float\n", floatLabel);
-        // check for int
-        gen_print("JUMPIFEQ %%ERR_RT_DIVZERO GF@a int@0\n");
-        // JMP end
-        gen_print("JUMP %%%d\n", endLabel);
-        // check for float
-        gen_print("LABEL %%%d\n", floatLabel);
-        gen_print("JUMPIFEQ %%ERR_RT_DIVZERO GF@a float@0x0p+0\n");
-        // end
-        gen_print("LABEL %%%d\n", endLabel);
-        gen_print("PUSHS GF@a\n");
+    switch (op.token.type) {
+        case TOKEN_MULTIPLY:
+            gen_print("MULS\n");
+            break;
 
-        gen_print("DIVS\n");
+        case TOKEN_DIVIDE:
+            checkNotZero();
+            gen_print("DIVS\n");
+            break;
+
+        case TOKEN_INT_DIVIDE:
+            if (resultType != INTEGER) {
+                return ERR_SEMANTIC_EXPR;
+            }
+            checkNotZero();
+            gen_print("IDIVS\n");
+            break;
+
+        default:
+            return ERR_SEMANTIC_EXPR;
     }
 
     scanner_destroy_token(&op.token);
@@ -516,8 +577,9 @@ Status reduce_get_length(SymStack *s) {
     Symbol hashtag = symstack_pop(s);
     symstack_pop(s); // handle
 
-    if (expr.varType == STRING) {
+    checkTopNotNil();
 
+    if (expr.varType == STRING) {
         gen_print("POPS GF@a\n");
         gen_print("STRLEN GF@b GF@a\n");
         gen_print("PUSHS GF@b\n");
@@ -539,10 +601,11 @@ Status reduce_concatenate(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
 
+    checkOperandsNotNil();
+
     if (y.varType == STRING && x.varType == STRING) {
         gen_print("POPS GF@a\n");
         gen_print("POPS GF@b\n");
-
         gen_print("CONCAT GF@c GF@b GF@a\n");
         gen_print("PUSHS GF@c\n");
     }
@@ -563,47 +626,37 @@ Status reduce_compare(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
 
-    bool xValid = (x.varType == INTEGER) || (x.varType == NUMBER) || (x.varType == BOOL) || (x.varType == STRING);
-    bool cond = x.varType == y.varType ;
-    if (xValid && cond) {
-        // comparing two identical varTypes
-        if (op.token.type == TOKEN_LT) {
-            gen_print("LTS\n");
-        } else if (op.token.type == TOKEN_GT) {
-            gen_print("GTS\n");
-        }
-        else if (op.token.type == TOKEN_LEQ) {
-            // get parameters
-            gen_print("POPS GF@a\n");
-            gen_print("POPS GF@b\n");
-
-            // compare parameters
-            gen_print("LT GF@c GF@a GF@b\n");
-            gen_print("EQ GF@d GF@a GF@b\n");
-
-            gen_print("PUSHS GF@c\n");
-            gen_print("PUSHS GF@d\n");
-            // if one is correct then inequality is correct
-            gen_print("ORS\n");
-        }
-        else if (op.token.type == TOKEN_GEQ) {
-            // get parameters
-            gen_print("POPS GF@a\n");
-            gen_print("POPS GF@b\n");
-
-            // compare parameters
-            gen_print("GT GF@c GF@a GF@b\n");
-            gen_print("EQ GF@d GF@a GF@b\n");
-
-            gen_print("PUSHS GF@c\n");
-            gen_print("PUSHS GF@d\n");
-            // if one is correct then inequality is correct
-            gen_print("ORS\n");
-        }
-
-    }
-    else {
+    // static type check
+    if ((x.varType == NIL) || (y.varType == NIL)) {
         return ERR_SEMANTIC_EXPR;
+    }
+
+    // dynamic type check
+    checkOperandsNotNil();
+
+    if (!makeOperandsCompatible(x.varType, y.varType, NULL)) {
+        return ERR_SEMANTIC_EXPR;
+    }
+
+    switch (op.token.type) {
+        case TOKEN_LT:
+            gen_print("LTS\n");
+            break;
+
+        case TOKEN_GT:
+            gen_print("GTS\n");
+            break;
+
+        case TOKEN_LEQ:
+            gen_print("GTS\nNOTS\n");
+            break;
+
+        case TOKEN_GEQ:
+            gen_print("LTS\nNOTS\n");
+            break;
+
+        default:
+            return ERR_SEMANTIC_EXPR;
     }
 
     scanner_destroy_token(&op.token);
@@ -619,20 +672,25 @@ Status reduce_equality(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
 
-
-    bool nil_exist = (x.varType == NIL) || (y.varType == NIL );
-    if (nil_exist || x.varType == y.varType) {
-        if (op.token.type == TOKEN_EQUALS) {
-            gen_print("EQS\n");
-        }
-        else if (op.token.type == TOKEN_NEQ) {
-            gen_print("EQS\n");
-            gen_print("NOTS\n");
-        }
-
+    bool xNumber = (x.varType == INTEGER) || (x.varType == NUMBER);
+    bool yNumber = (y.varType == INTEGER) || (y.varType == NUMBER);
+    // numbers have to be converted to float, it seems
+    if (xNumber && yNumber) {
+        // convert both to float
+        gen_print("POPS GF@a\n");
+        retype_to_float();
+        gen_print("MOVE GF@swap1 GF@a\n");
+        gen_print("POPS GF@a\n");
+        retype_to_float();
+        gen_print("PUSHS GF@a\n");
+        gen_print("PUSHS GF@swap1\n");
     }
-    else {
-        return ERR_SEMANTIC_EXPR;
+
+    // Do the same thing for both EQ and NEQ
+    gen_print("EQS\n");
+    // The only difference between EQ and NEQ is the negation
+    if (op.token.type == TOKEN_NEQ) {
+        gen_print("NOTS\n");
     }
 
     scanner_destroy_token(&op.token);
@@ -642,21 +700,6 @@ Status reduce_equality(SymStack *s) {
     return SUCCESS;
 }
 
-Status reduce_placeholder(SymStack *s) {
-    Symbol y = symstack_pop(s);
-    Symbol op = symstack_pop(s);
-    Symbol x = symstack_pop(s);
-    symstack_pop(s); // handle
-
-    // TODO all the type checks and code generation
-
-    (void)y;
-    (void)x;
-    (void)op;
-
-    symstack_push(s, GENERIC_EXPR);
-    return SUCCESS;
-}
 
 bool symstack_reduce(SymStack *s, Status *status) {
     // WARNING: all the rules are written in reverse order

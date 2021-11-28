@@ -654,6 +654,10 @@ bool nt_var_decl_assign(HTabPair *varPair) {
             if (isFunction) {
                 // Check if there is at least one return, and that it is the correct type
                 HTabPair *fnPair = st_lookup(&st, token.str);
+                if (fnPair == NULL) {
+                    status = ERR_SEMANTIC_DEF;
+                    break;
+                }
                 unsigned numReturns = list_count(&fnPair->value.returnList);
                 if (numReturns == 0) {
                     status = ERR_SEMANTIC_FUNC;

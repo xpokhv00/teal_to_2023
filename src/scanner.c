@@ -360,7 +360,7 @@ Status scanner_get_token(Token *pToken) {
                 if (input == ']') {
                     state = SCANNER_ALMOST_END;
                 } else if (input == EOF) {
-                    state = SCANNER_START;
+                    return ERR_LEXICAL;
                 }
                 break;
             case SCANNER_ALMOST_END:

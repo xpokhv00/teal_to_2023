@@ -640,11 +640,16 @@ bool nt_var_decl_assign(HTabPair *varPair) {
     switch (token.type) {
         case TOKEN_ASSIGN:
             GET_NEW_TOKEN();
-            // This could be an expression or function call
-            Token nextToken;
-            ASSERT_SUCCESS(scanner_get_token(&nextToken));
-            bool isFunction = (nextToken.type == TOKEN_PAR_L);
-            scanner_unget_token(nextToken);
+
+            bool isFunction = false;
+
+            if (token.type == TOKEN_IDENTIFIER) {
+                // This could be an expression or function call
+                Token nextToken;
+                ASSERT_SUCCESS(scanner_get_token(&nextToken));
+                isFunction = (nextToken.type == TOKEN_PAR_L);
+                scanner_unget_token(nextToken);
+            }
 
             if (isFunction) {
                 // Check if there is at least one return, and that it is the correct type

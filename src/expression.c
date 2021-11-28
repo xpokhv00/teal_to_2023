@@ -181,9 +181,14 @@ SymbolType tokentype_to_symboltype(TokenType tt) {
 
 Symbol token_to_symbol(Token token, SymTab *symTab) {
     Symbol symbol;
-    symbol.varType = st_token_to_type(symTab, token),
-    symbol.symbolType = tokentype_to_symboltype(token.type),
+
+    symbol.symbolType = tokentype_to_symboltype(token.type);
+    if (symbol.symbolType == S_NONE) {
+        return EMPTY_SYMBOL;
+    }
+    symbol.varType = st_token_to_type(symTab, token);
     symbol.token = token;
+
     return symbol;
 }
 
@@ -237,7 +242,6 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
-                case S_EMPTY:
                 case S_GETLEN:
                 case S_CONCAT:
                     return '<';
@@ -315,7 +319,6 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARR:
-                case S_VALUE:
                 case S_COMPARE:
                 case S_EQNEQ:
                 case S_GETLEN:
@@ -323,6 +326,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
                 case S_CONCAT:
                     return '>';
                 case S_PARL:
+                case S_VALUE:
                     return '<';
                 default:
                     return 'e';
@@ -345,18 +349,18 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
 
         case S_CONCAT:
             switch (in) {
+                case S_VALUE:
                 case S_ADDSUB:
                 case S_MULDIV:
                 case S_PARL:
-                case S_EQNEQ:
-                case S_EMPTY:
+                case S_GETLEN:
                 case S_CONCAT:
-                    return '>';
+                    return '<';
                 case S_PARR:
                 case S_COMPARE:
-                case S_GETLEN:
-                case S_VALUE:
-                    return '<';
+                case S_EQNEQ:
+                case S_EMPTY:
+                    return '>';
                 default:
                     return 'e';
             }
@@ -781,12 +785,7 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
         Symbol stackTopTerminal = symstack_top_terminal(&s);
         Symbol inputTerminal = token_to_symbol(*pToken, st);
 
-        if (inputTerminal.symbolType == S_NONE) {
-            inputTerminal = EMPTY_SYMBOL;
-        }
-
-        if ((inputTerminal.symbolType == S_EMPTY)
-            && (stackTopTerminal.symbolType == S_EMPTY)) {
+        if ((inputTerminal.symbolType == S_EMPTY) && (stackTopTerminal.symbolType == S_EMPTY)) {
             // The end of the expression, nothing left to do
             ret = true;
             break;
@@ -831,11 +830,11 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
                 // The table does not allow this combination
                 // the cycle will be ended
                 cont = false;
-                // filthy hack, might need to be fixed later
+
                 while (symstack_reduce(&s, status)) {
-                    // reduce
+                    // Reduce while you can
                 }
-                // TODO definitely needs refactorin
+
                 // this is basically the same condition as the first one
                 if (symstack_top(&s).symbolType != S_EXPR) {
                     ret = false;
@@ -845,6 +844,8 @@ bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType) {
                     ret = false;
                     break;
                 }
+                // if only one expression was left on the stack,
+                // it was correct
                 ret = true;
         }
     }

@@ -83,7 +83,7 @@ Status gen_prepend(const char *format, ...) {
 }
 
 void gen_destroy() {
-    gen_buffer_stop();
+    // there should be nothing left in the buffer
     free(printer.buffer);
 }
 

@@ -37,6 +37,7 @@ typedef struct {
     TypeListItem *active;
 } TypeList;
 
+bool isNumeric(Type type);
 Type token_keyword_to_type(TokenType tt);
 Type token_literal_to_type(TokenType tt);
 

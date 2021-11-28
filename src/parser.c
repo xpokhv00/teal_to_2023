@@ -853,15 +853,16 @@ bool nt_while(HTabPair *fnPair) {
             int evalLabel = gen_new_label();
             int doLabel = gen_new_label();
             int endLabel = gen_new_label();
+
+            // special buffering for while
+            // DEFVAR instructions will be printed here, effectively
+            gen_buffer_start();
             gen_print("LABEL %%%d\n", evalLabel);
 
             ASSERT_NT(nt_expr(&token, &st, &status, NULL));
 
             gen_conditional(doLabel, endLabel);
             gen_print("LABEL %%%d\n", doLabel);
-            // special buffering for while
-            // DEFVAR instructions will be printed here, effectively
-            gen_buffer_start();
 
             // execute the body of the while
             ASSERT_TOKEN_TYPE(TOKEN_DO);

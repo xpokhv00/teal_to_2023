@@ -378,6 +378,18 @@ void retype_to_float() {
     gen_print("LABEL %%%d\n", skip);
 }
 
+// Dynamically converts value in register a
+// {int, float} -> float
+void retype_to_float_keep_nil() {
+    // retypes register a to float
+    int skip = gen_new_label();
+    gen_print("TYPE GF@b GF@a\n");
+    gen_print("JUMPIFEQ %%%d GF@b string@float\n", skip);
+    gen_print("JUMPIFEQ %%%d GF@b string@nil\n", skip);
+    gen_print("INT2FLOAT GF@a GF@a\n");
+    gen_print("LABEL %%%d\n", skip);
+}
+
 // Decides whether the operands are compatible
 // Also generates code for int to float conversion, if needed
 // The resulting type can be retrieved by pointer
@@ -469,8 +481,9 @@ void checkOperandsNotNil() {
 Status reduce_value(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
+
     gen_print("PUSHS ");
-    gen_print_value(x.token, st);// TODO all the type checks and code generation
+    gen_print_value(x.token, st);
     gen_print("\n");
 
     Type exprType = st_token_to_type(st, x.token);
@@ -672,20 +685,32 @@ Status reduce_equality(SymStack *s) {
     Symbol x = symstack_pop(s);
     symstack_pop(s); // handle
 
-    bool xNumber = (x.varType == INTEGER) || (x.varType == NUMBER);
-    bool yNumber = (y.varType == INTEGER) || (y.varType == NUMBER);
-    // numbers have to be converted to float, it seems
-    if (xNumber && yNumber) {
-        // convert both to float
-        gen_print("POPS GF@a\n");
-        retype_to_float();
-        gen_print("MOVE GF@swap1 GF@a\n");
-        gen_print("POPS GF@a\n");
-        retype_to_float();
-        gen_print("PUSHS GF@a\n");
-        gen_print("PUSHS GF@swap1\n");
+    // NIL can be compared with anything
+    if ((x.varType == NIL) || (y.varType == NIL)) {
+        goto COMPATIBLE;
+    }
+    // if the variable types match exactly, we can compare them
+    if (x.varType == y.varType) {
+        goto COMPATIBLE;
     }
 
+    // EQ instruction does not like comparing ints to floats
+    // so we convert them both to float
+    if (isNumeric(x.varType) && isNumeric(y.varType)) {
+        // convert both to float
+        gen_print("POPS GF@a\n");
+        retype_to_float_keep_nil();
+        gen_print("MOVE GF@swap1 GF@a\n");
+        gen_print("POPS GF@a\n");
+        retype_to_float_keep_nil();
+        gen_print("PUSHS GF@a\n");
+        gen_print("PUSHS GF@swap1\n");
+        goto COMPATIBLE;
+    }
+    // no more options, operands are incompatible
+    return ERR_SEMANTIC_EXPR;
+
+    COMPATIBLE:
     // Do the same thing for both EQ and NEQ
     gen_print("EQS\n");
     // The only difference between EQ and NEQ is the negation
@@ -711,7 +736,6 @@ bool symstack_reduce(SymStack *s, Status *status) {
             {.to={S_PARR, S_EXPR, S_PARL}, .fn=reduce_parenthesis},
             {.to={S_EXPR, S_ADDSUB, S_EXPR}, .fn=reduce_addsub},
             {.to={S_EXPR, S_MULDIV, S_EXPR}, .fn=reduce_muldiv},
-            {.to={S_PARR, S_MULDIV, S_PARL}, .fn=reduce_parenthesis},   // TO DO idk if this ever happens
             {.to={S_EXPR, S_CONCAT, S_EXPR}, .fn=reduce_concatenate},
             {.to={S_EXPR, S_COMPARE, S_EXPR}, .fn=reduce_compare},
             {.to={S_EXPR, S_EQNEQ, S_EXPR}, .fn=reduce_equality},

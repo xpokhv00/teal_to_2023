@@ -11,6 +11,11 @@
 
 #include "types.h"
 
+// Just for convenience
+bool isNumeric(Type type) {
+    return (type == INTEGER) || (type == NUMBER);
+}
+
 Type token_literal_to_type(TokenType tt) {
     switch (tt) {
         case TOKEN_INTEGER_LIT:

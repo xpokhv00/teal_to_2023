@@ -662,6 +662,7 @@ bool nt_var_decl_assign(HTabPair *varPair) {
                 scanner_unget_token(nextToken);
             }
 
+            Type returnType;
             if (isFunction) {
                 // Check if there is at least one return, and that it is the correct type
                 HTabPair *fnPair = st_lookup(&st, token.str);
@@ -677,20 +678,20 @@ bool nt_var_decl_assign(HTabPair *varPair) {
                 }
                 // WARNING this might have side effects
                 list_first(&fnPair->value.returnList);
-                Type returnType = list_get_active(&fnPair->value.returnList);
-                if (returnType != varPair->value.varType) {
-                    status = ERR_SEMANTIC_EXPR;
-                    break;
-                }
+                returnType = list_get_active(&fnPair->value.returnList);
 
                 ASSERT_NT(nt_fn_call(false, true));
-
                 for (unsigned i=0; i<numReturns-1; i++) {
                     gen_print("POPS GF@_\n");
                 }
             } else {
-                ASSERT_NT(nt_expr(&token, &st, &status, NULL)); // TODO semantic check inside
+                ASSERT_NT(nt_expr(&token, &st, &status, &returnType));
             }
+            if (!can_assign(varPair->value.varType, returnType)) {
+                status = ERR_SEMANTIC_ASSIGN;
+                break;
+            }
+
             gen_print("POPS LF@$%u\n", varPair->value.ID);
             found = true;
             break;

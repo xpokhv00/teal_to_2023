@@ -453,7 +453,7 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
 
 bool nt_fn_returns(HTabPair *pair, bool isDeclared) {
     bool found = false;
-    list_first(&pair->value.returnList);
+
     switch (token.type) {
         case TOKEN_COLON:
             // <fn_returns> -> TOKEN_COLON <type> <fn_returns_next>
@@ -462,6 +462,7 @@ bool nt_fn_returns(HTabPair *pair, bool isDeclared) {
             Type returnType = token_keyword_to_type(token.type);
             if (isDeclared) {
                 // Check if return types from declaration match the ones from definition
+                list_first(&pair->value.returnList);
                 Type saved = list_get_active(&pair->value.returnList);
                 if (saved != returnType) {
                     status = ERR_SEMANTIC_FUNC;
@@ -487,6 +488,7 @@ bool nt_fn_returns(HTabPair *pair, bool isDeclared) {
             // function can be without return
 
             // Check that the list is no longer active
+            list_first(&pair->value.returnList);
             if (list_is_active(&pair->value.returnList)) {
                 status = ERR_SEMANTIC_FUNC;
                 break;
@@ -581,9 +583,6 @@ bool nt_fn_body(HTabPair *fnPair) {
 
         case TOKEN_RETURN:
             ASSERT_NT(nt_return(fnPair));
-            // Go to the end of the function
-            gen_print("JUMP %%end_of_fn_%s\n", fnPair->key);
-
             ASSERT_NT(nt_fn_body(fnPair)); // TODO maybe stop after return?
             found = true;
             break;
@@ -912,16 +911,33 @@ bool nt_return(HTabPair *fnPair) {
     switch (token.type) {
         case TOKEN_RETURN:
             // <return> -> TOKEN_RETURN <r_value_list>
-        GET_NEW_TOKEN();
+            GET_NEW_TOKEN();
             TypeList typeList = list_init();
             ASSERT_NT(nt_r_value_list(true, fnPair, &typeList));
-            // TODO check if returns match to the signature of the function
-//            while () {
-//
-//            }
 
+            // Error when returning more returns than zou are supposed to return
+            if (list_count(&typeList) > list_count(&fnPair->value.returnList)) {
+                status = ERR_SEMANTIC_FUNC;
+                break;
+            }
+            // Push nil into list if fewer returns than expected
+            if (list_count(&typeList) < list_count(&fnPair->value.returnList)) {
+                // Implicit return of all values NIL
+                unsigned numNils = list_count(&typeList) - list_count(&fnPair->value.returnList);
+                for (unsigned i=0; i<numNils; i++) {
+                    gen_print("PUSHS nil@nil\n");
+                    list_append(&typeList, NIL);
+                }
+            }
+            // Check identity of typelists
+            if (!list_can_assign(&fnPair->value.returnList, &typeList)) {
+                status = ERR_SEMANTIC_DEF;
+                break;
+            }
             list_destroy(&typeList);
 
+            // Go to the end of the function
+            gen_print("JUMP %%end_of_fn_%s\n", fnPair->key);
             found = true;
             break;
 

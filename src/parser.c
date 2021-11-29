@@ -298,6 +298,14 @@ bool nt_fn_def() {
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_returns(fnPair, isDeclared));
             ASSERT_NT(nt_fn_body(fnPair));
+
+            // Implicit return of all values NIL
+            int numReturns = list_count(&fnPair->value.returnList);
+            for (int i=0; i<numReturns; i++) {
+                gen_print("PUSHS nil@nil\n");
+            }
+            // the end of the function
+            gen_print("LABEL %%end_of_fn_%s\n", fnPair->key);
             gen_print("POPFRAME\n");
             gen_print("RETURN\n");
 
@@ -573,6 +581,9 @@ bool nt_fn_body(HTabPair *fnPair) {
 
         case TOKEN_RETURN:
             ASSERT_NT(nt_return(fnPair));
+            // Go to the end of the function
+            gen_print("JUMP %%end_of_fn_%s\n", fnPair->key);
+
             ASSERT_NT(nt_fn_body(fnPair)); // TODO maybe stop after return?
             found = true;
             break;

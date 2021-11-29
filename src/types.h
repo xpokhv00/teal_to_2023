@@ -37,10 +37,13 @@ typedef struct {
     TypeListItem *active;
 } TypeList;
 
+// Token and type functions
 bool isNumeric(Type type);
 Type token_keyword_to_type(TokenType tt);
 Type token_literal_to_type(TokenType tt);
+bool can_assign(Type dst, Type src);
 
+// List functions
 TypeList list_init();
 Status list_append(TypeList *list, Type type);
 void list_first(TypeList *list);
@@ -51,6 +54,5 @@ void list_destroy(TypeList *list);
 unsigned list_active_index(TypeList *list);
 unsigned list_count(TypeList *list);
 bool list_can_assign(TypeList *dstList, TypeList *srcList);
-bool can_assign(Type dst, Type src);
 
 #endif //TYPES_H

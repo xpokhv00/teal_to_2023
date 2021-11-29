@@ -16,15 +16,14 @@
 // Constructor, creates an empty table
 HTab *htab_init() {
     HTab *table = malloc(sizeof(HTab));
-
     if (table == NULL) {
-        // If allocation fails
         return NULL;
-    }
-
-    else {
+    } else {
         table->arr_size = HTAB_SIZE;
         table->htab_items = malloc(sizeof(HTabItem *) * HTAB_SIZE);
+        if (table->htab_items == NULL) {
+            return NULL;
+        }
 
         // Set the whole array to null
         for(size_t i = 0; i < HTAB_SIZE; i++) {
@@ -39,12 +38,9 @@ HTab *htab_init() {
 size_t htab_hash_function(HTabKey str) {
     unsigned h = 0; // 32 bits
     const unsigned char *p;
-
-    for(p = (const unsigned char*)str; *p != '\0'; p++)
-    {
+    for(p = (const unsigned char*)str; *p != '\0'; p++) {
         h = 65599*h + *p;
     }
-
     return h;
 }
 
@@ -53,15 +49,12 @@ HTabPair *htab_find(HTab *table, HTabKey key) {
     unsigned key_hash = htab_hash_function(key) % table->arr_size;
     HTabItem *temp = table->htab_items[key_hash];
 
-    while (temp)
-    {
-        if ((strcmp(temp->htab_pair.key, key)) == 0)
-        {
+    while (temp) {
+        if ((strcmp(temp->htab_pair.key, key)) == 0) {
             return &(temp->htab_pair);
         }
         temp = temp->next;
     }
-
     return NULL;
 }
 
@@ -71,10 +64,8 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
     HTabItem **element = &(table->htab_items[key_hash]);
 
     // Find last item of the list
-    while (*element)
-    {
-        if (strcmp((*element)->htab_pair.key, key) == 0)
-        {
+    while (*element) {
+        if (strcmp((*element)->htab_pair.key, key) == 0) {
             break;
         }
 
@@ -83,14 +74,12 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
     }
 
     *element = malloc(sizeof(HTabItem));
-    if (*element == NULL)
-    {
+    if (*element == NULL) {
         return NULL;
     }
 
     (*element)->htab_pair.key = malloc(strlen(key) + 1);
-    if ((*element)->htab_pair.key == NULL)
-    {
+    if ((*element)->htab_pair.key == NULL) {
         //allocation of item failed
         free(*element);
         return NULL;
@@ -100,7 +89,6 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
     strcpy((char *)(*element)->htab_pair.key , key);
     TypeList paramList = list_init();
     TypeList returnList = list_init();
-
     (*element)->htab_pair.value.specialFn = false;
     (*element)->htab_pair.value.defined = false;
     (*element)->htab_pair.value.paramList = paramList;
@@ -132,21 +120,18 @@ void htab_clear(HTab *table) {
     HTabItem *temp_element;
 
     // Delete items for every item in array
-    for (unsigned i = 0; i < table->arr_size; i++)
-    {
+    for (unsigned i = 0; i < table->arr_size; i++) {
         // Delete the first item of a list
         temp_element = table->htab_items[i];
         table->htab_items[i]= NULL;
 
         // Free every item of a following list, its key
-        while (temp_element != NULL)
-        {
+        while (temp_element != NULL) {
             HTabItem *current_element = temp_element->next;
             // free each element
             free((char *)temp_element->htab_pair.key);
             list_destroy(&temp_element->htab_pair.value.returnList);
             list_destroy(&temp_element->htab_pair.value.paramList);
-
             free(temp_element);
             temp_element = current_element;
         }
@@ -176,7 +161,6 @@ Status st_push_frame(SymTab *st) {
     if (st->top == NULL) {
         return ERR_INTERNAL;
     }
-
     st->top->next = next;
     return SUCCESS;
 }
@@ -196,8 +180,7 @@ HTabPair *st_lookup(SymTab *st, const char *key) {
 Status st_add(SymTab *st, Token token, HTabPair **pair) {
     if (st_lookup(st, token.str) != NULL) {
         return ERR_SEMANTIC_DEF;
-    }
-    else {
+    } else {
         *pair = htab_insert(st->top, token.str);
         (*pair)->value.varType = token_literal_to_type(token.type);
         (*pair)->value.ID = st->idCounter++;
@@ -229,7 +212,6 @@ Type st_token_to_type(SymTab *st, Token token) {
     if (pair != NULL) {
         return pair->value.varType;
     }
-
     return TYPE_NONE;
 }
 

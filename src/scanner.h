@@ -64,10 +64,6 @@ typedef enum {
     TOKEN_COMMA,
     TOKEN_PAR_L,
     TOKEN_PAR_R,
-
-    TOKEN_ERROR, // TODO what is this, is it really needed?
-
-    NUM_TOKENS, // This must be the last item
 } TokenType;
 
 

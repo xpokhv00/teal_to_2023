@@ -102,6 +102,9 @@ Status gen_print_literal(Token token) {
             // string with actual byte values, escape sequences will be decoded
             char *in = token.str;
             char *out = calloc(4*strlen(token.str)+10, sizeof(char));
+            if (out == NULL) {
+                return ERR_INTERNAL;
+            }
 
             int i = 1; // input index
             while ((in[i] != '\0') && (in[i] != '\"')) {
@@ -180,7 +183,7 @@ Status gen_write(Token token, SymTab *st) {
     // if there is nil, jump to nil label
     gen_print("JUMPIFEQ %%%d GF@b string@nil\n", nilLabel);
 
-    // otherwise use the write instruction
+    // otherwise, use write instruction
     gen_print("WRITE GF@a\n");
     gen_print("JUMP %%%d\n", endLabel);
 
@@ -211,7 +214,7 @@ Status gen_conditional(int trueLabel, int falseLabel) {
     // evaluate anything other than bool
     // expression is false, if the type is nil
     gen_print("JUMPIFEQ %%%d GF@b string@nil\n", falseLabel);
-    // otherwise it's true
+    // otherwise, it's true
     gen_print("JUMP %%%d\n", trueLabel);
 
     // evaluate bool

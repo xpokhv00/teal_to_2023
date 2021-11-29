@@ -105,13 +105,13 @@ JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 LT LF@areParamsCorrect LF@%param2 LF@%param1
 JUMPIFEQ %substrempty LF@areParamsCorrect bool@true
 
-# if we got here, everything is correct
+# If we got here, everything is correct
 DEFVAR LF@character
 SUB LF@%param1 LF@%param1 int@1
 SUB LF@%param2 LF@%param2 int@1
 MOVE LF@return string@
 
-# while (i<j) {i++;}
+# While (i<j) {i++;}
 DEFVAR LF@condition
 LABEL %substr_while_start
 GT LF@condition LF@%param1 LF@%param2

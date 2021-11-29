@@ -14,9 +14,10 @@
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
 
+#include "types.h"
+
 #include <string.h>
 #include <stdbool.h>
-#include "types.h"
 
 #define HTAB_SIZE 32
 

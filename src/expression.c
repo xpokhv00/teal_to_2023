@@ -373,7 +373,7 @@ char table_lookup(Symbol stackTop, Symbol inputSymbol) {
 // Dynamically converts value in register a
 // {int, float} -> float
 void retype_to_float() {
-    // retypes register a to float
+    // retypes register A to float
     int skip = gen_new_label();
     gen_print("TYPE GF@b GF@a\n");
     gen_print("JUMPIFEQ %%%d GF@b string@float\n", skip);
@@ -385,7 +385,7 @@ void retype_to_float() {
 // Dynamically converts value in register a
 // {int, float} -> float
 void retype_to_float_keep_nil() {
-    // retypes register a to float
+    // retypes register A to float
     int skip = gen_new_label();
     gen_print("TYPE GF@b GF@a\n");
     gen_print("JUMPIFEQ %%%d GF@b string@float\n", skip);
@@ -699,7 +699,7 @@ Status reduce_equality(SymStack *s) {
     }
 
     // EQ instruction does not like comparing ints to floats
-    // so we convert them both to float
+    // ,so we convert them both to float
     if (isNumeric(x.varType) && isNumeric(y.varType)) {
         // convert both to float
         gen_print("POPS GF@a\n");
@@ -753,7 +753,7 @@ bool symstack_reduce(SymStack *s, Status *status) {
             if (actual != expected) {
                 if ((expected == S_NONE) && (actual==S_HANDLE)) {
                     // we've made it to the end of the rule
-                    // so we can apply its function
+                    // ,so we can apply its function
                     Status returnStatus = ruleTable[i].fn(s);
                     if (returnStatus != SUCCESS) {
                         *status = returnStatus;

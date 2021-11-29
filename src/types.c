@@ -67,7 +67,6 @@ Status list_append(TypeList *list, Type type) {
         current = &(*current)->next;
     }
     (*current) = malloc(sizeof(TypeListItem));
-
     if (*current == NULL) {
         return ERR_INTERNAL;
     }

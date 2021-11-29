@@ -145,7 +145,7 @@ bool nt_prog_body() {
 
         case TOKEN_EOF:
             // pravidlo <prog_body> -> eps
-            // The last label, after which the excution is ended
+            // The last label, after which the execution is ended
             gen_print("LABEL %%start%u\n", callNumber);
             // At the end of program check if all declared functions were defined
             ASSERT_SUCCESS(st_check_fn_defined(&st));
@@ -797,29 +797,12 @@ bool nt_if(HTabPair *fnPair) {
             ASSERT_NT(nt_expr(&token, &st, &status, NULL));
 
             // CODE GENERATION
-            int boolLabel = gen_new_label();
             int thenLabel = gen_new_label();
             int elseLabel = gen_new_label();
             int endLabel = gen_new_label();
-            // expression result will be on the top of the stack
-            // pop it into a
-            gen_print("POPS GF@a\n");
-            // save condition's type into b
-            gen_print("TYPE GF@b GF@a\n");
-            // if the expression is bool, jump to its label
-            gen_print("JUMPIFEQ %%%d GF@b string@bool\n", boolLabel);
 
-            // evaluate anything other than bool
-            // expression is false, if the type is nil
-            gen_print("JUMPIFEQ %%%d GF@b string@nil\n", elseLabel);
-            // otherwise it's true
-            gen_print("JUMP %%%d\n", thenLabel);
+            gen_conditional(thenLabel, elseLabel);
 
-            // evaluate bool
-            gen_print("LABEL %%%d\n", boolLabel);
-            // if expression is false, jump to else label
-            gen_print("JUMPIFEQ %%%d GF@a bool@false\n", elseLabel);
-            // if it is true, continue
             gen_print("LABEL %%%d\n", thenLabel);
 
             ASSERT_TOKEN_TYPE(TOKEN_THEN);
@@ -1113,7 +1096,7 @@ bool nt_fn_call(bool discardReturn, bool isInFunction) {
             }
 
             ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
-            GET_NEW_TOKEN()
+            GET_NEW_TOKEN();
             found = true;
             break;
 
@@ -1260,11 +1243,6 @@ bool nt_type() {
 }
 
 
-
-Status parser_init() {
-    return SUCCESS;
-}
-
 Status parser_run() {
     status = scanner_get_token(&token);
     if (status != SUCCESS) {
@@ -1292,8 +1270,4 @@ Status parser_run() {
 
     scanner_destroy_token(&token);
     return status;
-}
-
-Status parser_destroy() {
-    return SUCCESS;
 }

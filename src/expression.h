@@ -17,6 +17,7 @@
 #include "generator.h"
 #include "types.h"
 #include "symtable.h"
+
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -37,7 +38,6 @@ typedef enum {
     S_HANDLE,
     S_GETLEN,
     S_CONCAT,
-    NUM_SYMBOLS,
 } SymbolType;
 
 typedef struct {
@@ -67,11 +67,7 @@ int symstack_count(SymStack* s);
 void symstack_destroy(SymStack* s);
 
 // The only function, that is called from parser
-// It parses expressions, check for correct semantics and generates code
+// It parses expressions, checks for correct semantics and generates code
 bool nt_expr(Token *pToken, SymTab *symTab, Status *status, Type *returnType);
-
-
-
-
 
 #endif // EXPRESSION_H

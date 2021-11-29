@@ -150,7 +150,7 @@ bool can_assign(Type dst, Type src) {
     if (dst == NUMBER && src == INTEGER) {
         return true;
     }
-    if (src == NIL) {
+    if ((src == NIL) && (dst != TYPE_NONE)) {
         return true;
     }
     return false;

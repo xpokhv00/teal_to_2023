@@ -66,7 +66,7 @@ bool nt_l_value_list(HTabPair *fnPair, TypeList *dstList, SymStack *generateLate
 
 bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater);
 
-bool nt_fn_call(bool discardReturn);
+bool nt_fn_call(bool discardReturn, bool isInFunction);
 bool nt_fn_call_params(HTabPair *callPair);
 bool nt_fn_call_params_next(HTabPair *callPair);
 bool nt_type();
@@ -136,7 +136,7 @@ bool nt_prog_body() {
             // it has to skip the definitions inbetween
             gen_print("LABEL %%start%u\n", callNumber);
             callNumber++;
-            ASSERT_NT(nt_fn_call(true));
+            ASSERT_NT(nt_fn_call(true, false));
             gen_print("JUMP %%start%u\n", callNumber);
             ASSERT_NT(nt_prog_body());
 
@@ -300,8 +300,8 @@ bool nt_fn_def() {
             ASSERT_NT(nt_fn_body(fnPair));
 
             // Implicit return of all values NIL
-            int numReturns = list_count(&fnPair->value.returnList);
-            for (int i=0; i<numReturns; i++) {
+            unsigned numReturns = list_count(&fnPair->value.returnList);
+            for (unsigned i=0; i<numReturns; i++) {
                 gen_print("PUSHS nil@nil\n");
             }
             // the end of the function
@@ -572,7 +572,7 @@ bool nt_fn_body(HTabPair *fnPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call(false));
+                ASSERT_NT(nt_fn_call(false, true));
                 ASSERT_NT(nt_fn_body(fnPair));
             } else {
                 ASSERT_NT(nt_assignment(fnPair));
@@ -601,6 +601,7 @@ bool nt_fn_body(HTabPair *fnPair) {
     }
     return found;
 }
+
 
 bool nt_var_decl() {
     bool found = false;
@@ -665,6 +666,7 @@ bool nt_var_decl_assign(HTabPair *varPair) {
                 // Check if there is at least one return, and that it is the correct type
                 HTabPair *fnPair = st_lookup(&st, token.str);
                 if (fnPair == NULL) {
+                    // Cannot use function that does not exist
                     status = ERR_SEMANTIC_DEF;
                     break;
                 }
@@ -681,7 +683,7 @@ bool nt_var_decl_assign(HTabPair *varPair) {
                     break;
                 }
 
-                ASSERT_NT(nt_fn_call(false));
+                ASSERT_NT(nt_fn_call(false, true));
 
                 for (unsigned i=0; i<numReturns-1; i++) {
                     gen_print("POPS GF@_\n");
@@ -731,9 +733,9 @@ bool nt_assignment(HTabPair *fnPair) {
                 calledFnPair = st_lookup(&st, token.str);
                 actualReturns = list_count(&calledFnPair->value.returnList);
                 neededReturns = symstack_count(&generateLater);
-
-                ASSERT_NT(nt_fn_call(false));
-            } else {
+                ASSERT_NT(nt_fn_call(false, true));
+            }
+            else {
                 ASSERT_NT(nt_r_value_list(false, fnPair, &srcList));
                 actualReturns = list_count(&srcList);
                 neededReturns = symstack_count(&generateLater);
@@ -1069,7 +1071,7 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generat
 }
 
 
-bool nt_fn_call(bool discardReturn) {
+bool nt_fn_call(bool discardReturn, bool isInFunction) {
     bool found = false;
 
     switch (token.type) {
@@ -1082,6 +1084,11 @@ bool nt_fn_call(bool discardReturn) {
             if (!isDeclared) {
                 // Cannot call an undeclared function
                 status = ERR_SEMANTIC_DEF;
+                break;
+            }
+            if (!isInFunction && list_count(&callPair->value.returnList)) {
+                // Cannot call function with returns from the outside of a function
+                status = ERR_SEMANTIC_FUNC;
                 break;
             }
 

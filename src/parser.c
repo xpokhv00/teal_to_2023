@@ -1146,9 +1146,7 @@ bool nt_fn_call_params(HTabPair *callPair) {
             }
             else {
                 if (!strcmp(callPair->key, "write")) {
-                    gen_print("WRITE ");
-                    gen_print_value(token, &st);
-                    gen_print("\n");
+                    gen_write(token, &st);
                 }
             }
 
@@ -1206,9 +1204,7 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
             }
             else {
                 if (!strcmp(callPair->key, "write")) {
-                    gen_print("WRITE ");
-                    gen_print_value(token, &st);
-                    gen_print("\n");
+                    gen_write(token, &st);
                 }
             }
 

@@ -166,6 +166,33 @@ Status gen_print_var(Token token, SymTab* st) {
     return SUCCESS;
 }
 
+Status gen_write(Token token, SymTab *st) {
+    int nilLabel = gen_new_label();
+    int endLabel = gen_new_label();
+
+    // Move the value to print into register a
+    gen_print("MOVE ");
+    gen_print(" GF@a ");
+    gen_print_value(token, st);
+    gen_print("\n");
+    // Save its type into register b
+    gen_print("TYPE GF@b GF@a\n");
+    // if there is nil, jump to nil label
+    gen_print("JUMPIFEQ %%%d GF@b string@nil\n", nilLabel);
+
+    // otherwise use the write instruction
+    gen_print("WRITE GF@a\n");
+    gen_print("JUMP %%%d\n", endLabel);
+
+    // print nil
+    gen_print("LABEL %%%d\n", nilLabel);
+    gen_print("WRITE string@nil\n");
+
+    // end
+    gen_print("LABEL %%%d\n", endLabel);
+    return SUCCESS;
+}
+
 int gen_new_label() {
     return printer.labelCounter++;
 }

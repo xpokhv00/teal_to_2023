@@ -32,6 +32,7 @@ void gen_destroy();
 Status gen_print_literal(Token token);
 Status gen_print_value(Token token, SymTab* st);
 Status gen_print_var(Token token, SymTab* st);
+Status gen_write(Token token, SymTab *st);
 int gen_new_label();
 Status gen_conditional(int trueLabel, int falseLabel);
 

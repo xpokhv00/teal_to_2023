@@ -152,6 +152,8 @@ Status scanner_get_token(Token *pToken) {
                                    || (input >= 'a' && input <= 'z')
                                    || input == '_') {
                             state = SCANNER_IDENTIFIER;
+                        } else {
+                            return ERR_LEXICAL;
                         }
                 }
                 break;
@@ -164,7 +166,7 @@ Status scanner_get_token(Token *pToken) {
             case SCANNER_PAR_L:
             case SCANNER_PAR_R:
             case SCANNER_COMMA:
-                SCAN_END();
+            SCAN_END();
 
             case SCANNER_STRING_START:
                 if (input == '"') {
@@ -249,7 +251,7 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
-                
+
             case SCANNER_SEQ_25:
                 if (input >= '0' && input <= '5') {
                     state = SCANNER_STRING_VALUE;
@@ -265,9 +267,10 @@ Status scanner_get_token(Token *pToken) {
                     SCAN_END();
                 }
                 break;
-                
+
             case SCANNER_PLUS:
                 SCAN_END();
+
             case SCANNER_DIVIDE:
                 if (input == '/') {
                     state = SCANNER_INT_DIVIDE;
@@ -275,13 +278,14 @@ Status scanner_get_token(Token *pToken) {
                 } else {
                     SCAN_END();
                 }
+
             case SCANNER_INT_DIVIDE:
                 pToken->type = TOKEN_INT_DIVIDE;
                 SCAN_END();
-                
+
             case SCANNER_MULTIPLY:
                 SCAN_END();
-                
+
             case SCANNER_DOT:
                 if (input == '.') {
                     state = SCANNER_CONCATENATE;
@@ -295,37 +299,42 @@ Status scanner_get_token(Token *pToken) {
                 if (input == '=') {
                     state = SCANNER_EQ;
                     pToken->type = TOKEN_EQUALS;
-                    
+
                 } else {
                     pToken->type = TOKEN_ASSIGN;
                     SCAN_END();
                 }
                 break;
+
             case SCANNER_EQ:
                 SCAN_END();
 
             case SCANNER_LT:
                 if (input == '=') {
-                    
+
                     state = SCANNER_LEQ;
                     break;
                 } else {
                     SCAN_END();
                 }
+
             case SCANNER_GT:
                 if (input == '=') {
                     state = SCANNER_GTE;
-                    
+
                     break;
                 } else {
                     SCAN_END();
                 }
+
             case SCANNER_LEQ:
                 pToken->type = TOKEN_LEQ;
                 SCAN_END();
+
             case SCANNER_GTE:
                 pToken->type = TOKEN_GEQ;
                 SCAN_END();
+
             case SCANNER_TILDA:
                 if (input == '=') {
                     pToken->type = TOKEN_NEQ;
@@ -344,6 +353,7 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_COMMENT;
                 }
                 break;
+
             case SCANNER_ALMOST_BLOCK:
                 if (input == '[') {
                     state = SCANNER_COMMENT_BLOCK;
@@ -351,11 +361,13 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_COMMENT;
                 }
                 break;
+
             case SCANNER_COMMENT:
                 if (input == '\n' || input == EOF) {
                     state = SCANNER_START;
                 }
                 break;
+
             case SCANNER_COMMENT_BLOCK:
                 if (input == ']') {
                     state = SCANNER_ALMOST_END;
@@ -363,6 +375,7 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
+
             case SCANNER_ALMOST_END:
                 if (input == ']') {
                     state = SCANNER_START;
@@ -376,11 +389,12 @@ Status scanner_get_token(Token *pToken) {
 
                 } else if (input == '.') {
                     state = SCANNER_NUMBER_POINT;
-                } else {
+                } else if (input == 'e' || input == 'E') {
+                    state = SCANNER_EXP_BASE;
+                }else {
                     pToken->type = TOKEN_INTEGER_LIT;
                     SCAN_END();
                 }
-                
                 break;
 
             case SCANNER_NUMBER_POINT:
@@ -392,6 +406,7 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
+
             case SCANNER_DOUBLE:
                 if (input >= '0' && input <= '9') {
                     
@@ -402,6 +417,7 @@ Status scanner_get_token(Token *pToken) {
                     SCAN_END();
                 }
                 break;
+
             case SCANNER_EXP_BASE:
                 if (input >= '0' && input <= '9') {
                     state = SCANNER_EXP;
@@ -411,6 +427,7 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
+
             case SCANNER_EXP_SIGN:
                 if (input >= '0' && input <= '9') {
                     state = SCANNER_EXP;
@@ -418,6 +435,7 @@ Status scanner_get_token(Token *pToken) {
                     return ERR_LEXICAL;
                 }
                 break;
+
             case SCANNER_EXP:
                 if (input >= '0' && input <= '9') {
                     

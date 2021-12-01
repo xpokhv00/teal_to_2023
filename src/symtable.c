@@ -165,20 +165,36 @@ Status st_push_frame(SymTab *st) {
     return SUCCESS;
 }
 
-HTabPair *st_lookup(SymTab *st, const char *key) {
+HTabPair *st_lookup(SymTab *st, const char *key, bool topFrameOnly) {
     HTab *currentTable = st->top;
+    bool firstPass = true;
+
     do {
+        bool shouldCheck = true;
+
+        if (topFrameOnly) {
+            // if this is not the first pass (most local scope)
+            // nor the last pass (global scope with function names)
+            if ((firstPass == false) && (currentTable->next != NULL)) {
+                // skip the checking
+                shouldCheck = false;
+            }
+            firstPass = false;
+        }
+
+        // the actual checking
         HTabPair *pair = htab_find(currentTable, key);
-        if (pair) {
+        if (shouldCheck && (pair != NULL)) {
             return pair;
         }
+        // move onto the next frame
         currentTable = currentTable->next;
-    } while (currentTable);
+    } while (currentTable != NULL);
     return NULL;
 }
 
 Status st_add(SymTab *st, Token token, HTabPair **pair) {
-    if (st_lookup(st, token.str) != NULL) {
+    if (st_lookup(st, token.str, true) != NULL) {
         return ERR_SEMANTIC_DEF;
     } else {
         *pair = htab_insert(st->top, token.str);
@@ -208,7 +224,7 @@ Type st_token_to_type(SymTab *st, Token token) {
         return type;
     }
 
-    HTabPair *pair = st_lookup(st, token.str);
+    HTabPair *pair = st_lookup(st, token.str, false);
     if (pair != NULL) {
         return pair->value.varType;
     }

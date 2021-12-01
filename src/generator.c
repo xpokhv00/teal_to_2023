@@ -160,7 +160,7 @@ Status gen_print_value(Token token, SymTab* st) {
 
 Status gen_print_var(Token token, SymTab* st) {
     if (token.type == TOKEN_IDENTIFIER) {
-        HTabPair *pair = st_lookup(st, token.str);
+        HTabPair *pair = st_lookup(st, token.str, false);
         if (pair == NULL) {
             return ERR_SEMANTIC_DEF;
         }

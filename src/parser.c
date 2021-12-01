@@ -46,7 +46,7 @@ bool nt_fn_body(HTabPair *fnPair);
 
 bool nt_var_decl();
 
-bool nt_var_decl_assign(HTabPair *varPair);
+bool nt_var_decl_assign(Type *assignedType);
 
 bool nt_assignment(HTabPair *fnPair);
 
@@ -268,12 +268,12 @@ bool nt_fn_def() {
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
 
             // Check if function is already declared
-            HTabPair *fnPair = st_lookup(&st, token.str);
+            HTabPair *fnPair = st_lookup(&st, token.str, false);
             bool isDeclared = fnPair != NULL;
             if (!isDeclared) {
                 // Adds function name into symtable
                 ASSERT_SUCCESS(st_add(&st, token, &fnPair));
-                fnPair = st_lookup(&st, token.str);
+                fnPair = st_lookup(&st, token.str, false);
             } else {
                 // Function cannot be defined more than once
                 if (fnPair->value.defined) {
@@ -611,31 +611,46 @@ bool nt_var_decl() {
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
 
-            // Checks if identifier already exists in symtable
-            // If not creates one
-            HTabPair *varPair = st_lookup(&st, token.str);
-            bool isDeclared = (varPair != NULL);
-            if (isDeclared) {
-                // Variable cannot be declared more than once
-                status = ERR_SEMANTIC_DEF;
+            // Save the identifier for later, when we define the variable
+            Token idToken = token;
+            status = scanner_get_token(&token);
+            if (status != SUCCESS) {
                 break;
             }
+            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            GET_NEW_TOKEN();
+
+            // Save the type for later, when we define the variable
+            Type varType = token_keyword_to_type(token.type);
+            if (varType == TYPE_NONE) {
+                status = ERR_SYNTAX;
+                break;
+            }
+            GET_NEW_TOKEN();
+
+            Type assignedType;
+            ASSERT_NT(nt_var_decl_assign(&assignedType));
+
+            // Only after the expression is evaluated,
+            // we can add the new variable into the symbol table
+            // and use DEFVAR to define it
             // Adds variable name into symtable
-            ASSERT_SUCCESS(st_add(&st, token, &varPair));
-            varPair = st_lookup(&st, token.str);
+            HTabPair *varPair;
+            ASSERT_SUCCESS(st_add(&st, idToken, &varPair));
+            scanner_destroy_token(&idToken);
+            // Set type of new variable
+            varPair->value.varType = varType;
 
             // Generate appropriate code
             gen_prepend("DEFVAR LF@$%u\n", varPair->value.ID);
 
-            GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_COLON);
-            GET_NEW_TOKEN();
+            if (!can_assign(varPair->value.varType, assignedType)) {
+                status = ERR_SEMANTIC_ASSIGN;
+                break;
+            }
 
-            // Set type of new variable
-            varPair->value.varType = token_keyword_to_type(token.type);
+            gen_print("POPS LF@$%u\n", varPair->value.ID);
 
-            ASSERT_NT(nt_type());
-            ASSERT_NT(nt_var_decl_assign(varPair));
             found = true;
             break;
 
@@ -645,8 +660,9 @@ bool nt_var_decl() {
     return found;
 }
 
-bool nt_var_decl_assign(HTabPair *varPair) {
+bool nt_var_decl_assign(Type *assignedType) {
     bool found = false;
+    Type returnType;
 
     switch (token.type) {
         case TOKEN_ASSIGN:
@@ -662,10 +678,9 @@ bool nt_var_decl_assign(HTabPair *varPair) {
                 scanner_unget_token(nextToken);
             }
 
-            Type returnType;
             if (isFunction) {
                 // Check if there is at least one return, and that it is the correct type
-                HTabPair *fnPair = st_lookup(&st, token.str);
+                HTabPair *fnPair = st_lookup(&st, token.str, false);
                 if (fnPair == NULL) {
                     // Cannot use function that does not exist
                     status = ERR_SEMANTIC_DEF;
@@ -687,20 +702,19 @@ bool nt_var_decl_assign(HTabPair *varPair) {
             } else {
                 ASSERT_NT(nt_expr(&token, &st, &status, &returnType));
             }
-            if (!can_assign(varPair->value.varType, returnType)) {
-                status = ERR_SEMANTIC_ASSIGN;
-                break;
-            }
 
-            gen_print("POPS LF@$%u\n", varPair->value.ID);
             found = true;
             break;
 
         default:
             // the variable does not have to be assigned, which makes it nil
-            gen_print("MOVE LF@$%u nil@nil\n", varPair->value.ID);
+            gen_print("PUSHS nil@nil\n");
+            returnType = NIL;
             found = true;
             break;
+    }
+    if (assignedType) {
+        *assignedType = returnType;
     }
     return found;
 }
@@ -736,7 +750,7 @@ bool nt_assignment(HTabPair *fnPair) {
             }
 
             if (isFunction) {
-                calledFnPair = st_lookup(&st, token.str);
+                calledFnPair = st_lookup(&st, token.str, false);
                 actualReturns = list_count(&calledFnPair->value.returnList);
                 neededReturns = symstack_count(&generateLater);
                 ASSERT_NT(nt_fn_call(false, true));
@@ -812,7 +826,10 @@ bool nt_if(HTabPair *fnPair) {
 
             ASSERT_TOKEN_TYPE(TOKEN_THEN);
             GET_NEW_TOKEN();
+
+            st_push_frame(&st);
             ASSERT_NT(nt_fn_body(fnPair));
+            st_pop_frame(&st);
 
             gen_print("JUMP %%%d\n", endLabel);
             gen_print("LABEL %%%d\n", elseLabel);
@@ -839,7 +856,9 @@ bool nt_else(HTabPair *fnPair) {
         case TOKEN_ELSE:
             // <else> -> TOKEN_ELSE <fn_body>
             GET_NEW_TOKEN();
+            st_push_frame(&st);
             ASSERT_NT(nt_fn_body(fnPair));
+            st_pop_frame(&st);
             found = true;
             break;
 
@@ -877,7 +896,9 @@ bool nt_while(HTabPair *fnPair) {
             // execute the body of the while
             ASSERT_TOKEN_TYPE(TOKEN_DO);
             GET_NEW_TOKEN();
+            st_push_frame(&st);
             ASSERT_NT(nt_fn_body(fnPair));
+            st_pop_frame(&st);
 
             gen_buffer_stop();
             // evaluate the condition
@@ -1070,7 +1091,7 @@ bool nt_fn_call(bool discardReturn, bool isInFunction) {
             // <fn_call> -> TOKEN_IDENTIFIER TOKEN_PAR_L <fn_call_params> TOKEN_PAR_R
 
             // Get the pair of called function
-            HTabPair *callPair = st_lookup(&st, token.str);
+            HTabPair *callPair = st_lookup(&st, token.str, false);
 
             GET_NEW_TOKEN();
             ASSERT_TOKEN_TYPE(TOKEN_PAR_L);

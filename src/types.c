@@ -131,13 +131,14 @@ bool list_can_assign(TypeList *dstList, TypeList *srcList) {
     list_first(dstList);
     list_first(srcList);
     while (list_is_active(dstList) && list_is_active(srcList)) {
-        list_next(dstList);
-        list_next(srcList);
         Type dstType = list_get_active(dstList);
         Type srcType = list_get_active(srcList);
         if (!can_assign(dstType, srcType)){
             return false;
         }
+        list_next(dstList);
+        list_next(srcList);
+
     }
     return true;
 }

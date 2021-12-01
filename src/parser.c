@@ -756,7 +756,7 @@ bool nt_assignment(HTabPair *fnPair) {
                 }
                 else {
                     if (!list_can_assign(&dstList, &srcList)) {
-                        status = ERR_SEMANTIC_FUNC;
+                        status = ERR_SEMANTIC_ASSIGN;
                         break;
                     }
                 }

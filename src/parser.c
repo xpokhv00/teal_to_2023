@@ -1069,8 +1069,14 @@ bool nt_fn_call(bool discardReturn, bool isInFunction) {
         case TOKEN_IDENTIFIER:;
             // <fn_call> -> TOKEN_IDENTIFIER TOKEN_PAR_L <fn_call_params> TOKEN_PAR_R
 
-            // Check whether the function is declared or defined
+            // Get the pair of called function
             HTabPair *callPair = st_lookup(&st, token.str);
+
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            GET_NEW_TOKEN();
+
+            // Check whether the function is declared or defined
             bool isDeclared = callPair != NULL;
             if (!isDeclared) {
                 // Cannot call an undeclared function
@@ -1083,9 +1089,7 @@ bool nt_fn_call(bool discardReturn, bool isInFunction) {
                 break;
             }
 
-            GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
-            GET_NEW_TOKEN();
+
 
             if (!callPair->value.specialFn) {
                 gen_print("CREATEFRAME\n");

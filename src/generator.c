@@ -162,7 +162,7 @@ Status gen_print_var(Token token, SymTab* st) {
     if (token.type == TOKEN_IDENTIFIER) {
         HTabPair *pair = st_lookup(st, token.str);
         if (pair == NULL) {
-            return ERR_INTERNAL;
+            return ERR_SEMANTIC_DEF;
         }
         gen_print("LF@$%u", pair->value.ID);
     }
@@ -176,7 +176,10 @@ Status gen_write(Token token, SymTab *st) {
     // Move the value to print into register a
     gen_print("MOVE ");
     gen_print(" GF@a ");
-    gen_print_value(token, st);
+    Status status = gen_print_value(token, st);
+    if (status != SUCCESS) {
+        return status;
+    }
     gen_print("\n");
     // Save its type into register b
     gen_print("TYPE GF@b GF@a\n");

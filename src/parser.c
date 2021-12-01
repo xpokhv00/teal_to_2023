@@ -719,17 +719,22 @@ bool nt_assignment(HTabPair *fnPair) {
             ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
             GET_NEW_TOKEN();
 
-            // Check if the identifier is a variable or a function
-            // Get next token to know what we're dealing with
-            Token nextToken;
-            ASSERT_SUCCESS(scanner_get_token(&nextToken));
-            bool isFunction = (nextToken.type == TOKEN_PAR_L);
-            scanner_unget_token(nextToken);
-
+            bool isFunction = false;
             unsigned actualReturns;
             unsigned neededReturns;
             TypeList srcList = list_init();
             HTabPair *calledFnPair;
+
+            // In order to be a function, the token must be an identifier
+            if (token.type == TOKEN_IDENTIFIER) {
+                // Check if the identifier is a variable or a function
+                // Get next token to know what we're dealing with
+                Token nextToken;
+                ASSERT_SUCCESS(scanner_get_token(&nextToken));
+                isFunction = (nextToken.type == TOKEN_PAR_L);
+                scanner_unget_token(nextToken);
+            }
+
             if (isFunction) {
                 calledFnPair = st_lookup(&st, token.str);
                 actualReturns = list_count(&calledFnPair->value.returnList);
@@ -941,9 +946,11 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *srcList) {
         case TOKEN_INTEGER_LIT:
         case TOKEN_DOUBLE_LIT:
         case TOKEN_STRING_LIT:
-        case TOKEN_NIL:;
+        case TOKEN_NIL:
+        case TOKEN_PAR_L:
+        case TOKEN_GET_LENGTH:;
             // Cannot be a function
-            // <r_value_list> -> <r_value> <r_value_list_next>
+            // <r_value_list> -> <expr> <r_value_list_next>
             Type exprType;
             ASSERT_NT(nt_expr(&token, &st, &status, &exprType));
 

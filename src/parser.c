@@ -246,7 +246,7 @@ bool nt_fn_decl_params_next(HTabPair *pair) {
 
         default:
             // <fn_decl_params> -> eps
-            // there don't have to be any parameters
+            // there don't have to be any more parameters
             found = true;
             break;
     }
@@ -256,9 +256,6 @@ bool nt_fn_decl_params_next(HTabPair *pair) {
 bool nt_fn_def() {
     bool found = false;
 
-    //  function bar(param : string) : string
-    //      return foo (param)
-    //  end
     switch (token.type) {
         case TOKEN_FUNCTION:
             // <fn_def> -> TOKEN_FUNCTION TOKEN_IDENTIFIER
@@ -368,12 +365,11 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
             found = true;
             break;
 
-
         default:
             // <fn_def_params> -> eps
             // there don't have to be any parameters
 
-            // Check that the list is no longer active
+            // Check that the parameter list is no longer active
             list_first(&pair->value.paramList);
             if (list_is_active(&pair->value.paramList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -436,9 +432,9 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
 
         default:
             // <fn_def_params> -> eps
-            // there don't have to be any parameters
+            // there don't have to be any more parameters
 
-            // Check that the list is no longer active
+            // Check that the parameter list is no longer active
             list_next(&pair->value.paramList);
             if (list_is_active(&pair->value.paramList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -487,7 +483,7 @@ bool nt_fn_returns(HTabPair *pair, bool isDeclared) {
             // <fn_returns> -> eps
             // function can be without return
 
-            // Check that the list is no longer active
+            // Check that the return list is no longer active
             list_first(&pair->value.returnList);
             if (list_is_active(&pair->value.returnList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -535,9 +531,9 @@ bool nt_fn_returns_next(HTabPair *pair, bool isDeclared) {
 
         default:
             // <fn_returns_next> -> eps
-            // function can be without return
+            // function can be without any further returns
 
-            // Check that the list is no longer active
+            // Check that the return list is no longer active
             list_next(&pair->value.returnList);
             if (list_is_active(&pair->value.returnList)) {
                 status = ERR_SEMANTIC_FUNC;
@@ -563,9 +559,10 @@ bool nt_fn_body(HTabPair *fnPair) {
 
         case TOKEN_IDENTIFIER:;
             // assignment or function call
-            // <fn_body> -> nt_l_value_list TOKEN_ASSIGN <expr> <fn_body>
+            // <fn_body> -> <assignment> <fn_body>
+            // <fn_body> -> <fn_call> <fn_body>
 
-            // get next token to know what we're dealing with
+            // Get next token to know what we're dealing with
             Token nextToken;
             ASSERT_SUCCESS(scanner_get_token(&nextToken));
             bool isFunction = (nextToken.type == TOKEN_PAR_L);
@@ -601,7 +598,6 @@ bool nt_fn_body(HTabPair *fnPair) {
     }
     return found;
 }
-
 
 bool nt_var_decl() {
     bool found = false;
@@ -691,7 +687,7 @@ bool nt_var_decl_assign(Type *assignedType) {
                     status = ERR_SEMANTIC_FUNC;
                     break;
                 }
-                // WARNING this might have side effects
+
                 list_first(&fnPair->value.returnList);
                 returnType = list_get_active(&fnPair->value.returnList);
 
@@ -1082,7 +1078,6 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generat
     return found;
 }
 
-
 bool nt_fn_call(bool discardReturn, bool isInFunction) {
     bool found = false;
 
@@ -1179,7 +1174,7 @@ bool nt_fn_call_params(HTabPair *callPair) {
             break;
 
         default:
-            // <fn_decl_params> -> eps
+            // <fn_call_params> -> eps
             // there don't have to be any parameters
 
             // write function will not be checked
@@ -1239,7 +1234,7 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
 
         default:
             // <fn_decl_params> -> eps
-            // there don't have to be any parameters
+            // there don't have to be any more parameters
 
             // Do this only for write function
             if (!callPair->value.specialFn) {

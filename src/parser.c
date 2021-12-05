@@ -66,7 +66,7 @@ bool nt_l_value_list(HTabPair *fnPair, TypeList *dstList, SymStack *generateLate
 
 bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater);
 
-bool nt_fn_call(bool discardReturn, bool isInFunction);
+bool nt_fn_call(bool discardReturn);
 bool nt_fn_call_params(HTabPair *callPair);
 bool nt_fn_call_params_next(HTabPair *callPair);
 bool nt_type();
@@ -136,7 +136,7 @@ bool nt_prog_body() {
             // it has to skip the definitions inbetween
             gen_print("LABEL %%start%u\n", callNumber);
             callNumber++;
-            ASSERT_NT(nt_fn_call(true, false));
+            ASSERT_NT(nt_fn_call(true));
             gen_print("JUMP %%start%u\n", callNumber);
             ASSERT_NT(nt_prog_body());
 
@@ -569,7 +569,7 @@ bool nt_fn_body(HTabPair *fnPair) {
             scanner_unget_token(nextToken);
 
             if (isFunction) {
-                ASSERT_NT(nt_fn_call(false, true));
+                ASSERT_NT(nt_fn_call(false));
                 ASSERT_NT(nt_fn_body(fnPair));
             } else {
                 ASSERT_NT(nt_assignment(fnPair));
@@ -691,7 +691,7 @@ bool nt_var_decl_assign(Type *assignedType) {
                 list_first(&fnPair->value.returnList);
                 returnType = list_get_active(&fnPair->value.returnList);
 
-                ASSERT_NT(nt_fn_call(false, true));
+                ASSERT_NT(nt_fn_call(false));
                 for (unsigned i=0; i<numReturns-1; i++) {
                     gen_print("POPS GF@_\n");
                 }
@@ -749,7 +749,7 @@ bool nt_assignment(HTabPair *fnPair) {
                 calledFnPair = st_lookup(&st, token.str, false);
                 actualReturns = list_count(&calledFnPair->value.returnList);
                 neededReturns = symstack_count(&generateLater);
-                ASSERT_NT(nt_fn_call(false, true));
+                ASSERT_NT(nt_fn_call(false));
             }
             else {
                 ASSERT_NT(nt_r_value_list(false, fnPair, &srcList));
@@ -1078,7 +1078,7 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generat
     return found;
 }
 
-bool nt_fn_call(bool discardReturn, bool isInFunction) {
+bool nt_fn_call(bool discardReturn) {
     bool found = false;
 
     switch (token.type) {
@@ -1099,13 +1099,6 @@ bool nt_fn_call(bool discardReturn, bool isInFunction) {
                 status = ERR_SEMANTIC_DEF;
                 break;
             }
-            if (!isInFunction && list_count(&callPair->value.returnList)) {
-                // Cannot call function with returns from the outside of a function
-                status = ERR_SEMANTIC_FUNC;
-                break;
-            }
-
-
 
             if (!callPair->value.specialFn) {
                 gen_print("CREATEFRAME\n");

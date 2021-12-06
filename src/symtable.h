@@ -28,14 +28,14 @@ typedef struct htab HTab;
 typedef struct symtab SymTab;
 
 // Types:
-typedef const char *HTabKey;
+typedef const char *HTabKey;        // Key (string) - used for fn / var identification
 typedef struct {
-    bool        defined;
-    TypeList    paramList;          // Only used in functions
-    TypeList    returnList;         // Only used in functions
+    bool        defined;            // Used only for functions
+    TypeList    paramList;          // Used only for functions
+    TypeList    returnList;         // Used only for functions
     Type        varType;            // Only used in variables, TYPE_NONE for functions
-    int         ID;                 // each entry in symtable gets its own unique ID
-    bool        specialFn;          // for write function
+    int         ID;                 // Each entry in symtable gets its own unique ID
+    bool        specialFn;          // Used only for builtin write function
 } HTabValue;
 
 // Pair of values in hash table
@@ -46,20 +46,21 @@ typedef struct  {
 
 // Full structure of an item
 struct htabitem {
-    HTabPair htab_pair;
-    struct htabitem *next;
+    HTabPair htab_pair;         // Pair of value (containing all the data) and the key (unique)
+    struct htabitem *next;      // Pointer to the next item in the list
 };
 
 // Hash table full structure
 struct htab {
-    HTabItem **htab_items;
-    unsigned int arr_size;
-    HTab *next;
+    HTabItem **htab_items;      // Array of items, adress of the current item calculated using hash function
+    unsigned int arr_size;      // Size of the array
+    HTab *next;                 // Pointer to the next table
 };
 
+// Symbol table containing stack of hash tables
 struct symtab {
-    HTab *top;
-    int idCounter;
+    HTab *top;                  // Pointer to the table currently on top
+    int idCounter;              // Current number of tables
 };
 
 // Hash table functions

@@ -1262,7 +1262,7 @@ bool nt_type() {
     return found;
 }
 
-
+// The only function called from main
 Status parser_run() {
     status = scanner_get_token(&token);
     if (status != SUCCESS) {
@@ -1283,7 +1283,6 @@ Status parser_run() {
         return ERR_SYNTAX;
     }
 
-    // TODO delete later
     if (status != SUCCESS) {
         fprintf(stderr, "error on line %u:%u:\n\n", token.lineNumber, token.characterNumber);
     }

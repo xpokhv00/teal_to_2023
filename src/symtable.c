@@ -34,7 +34,7 @@ HTab *htab_init() {
     return table;
 }
 
-// Hash function of a hash table
+// Hash function of a hash table, used to calculate where each item goes in the table
 size_t htab_hash_function(HTabKey str) {
     unsigned h = 0; // 32 bits
     const unsigned char *p;
@@ -85,7 +85,7 @@ HTabPair *htab_insert(HTab *table, HTabKey key) {
         return NULL;
     }
 
-    // Initialize new item
+    // Initialize new item to the default values
     strcpy((char *)(*element)->htab_pair.key , key);
     TypeList paramList = list_init();
     TypeList returnList = list_init();
@@ -146,6 +146,7 @@ void htab_destroy(HTab *table) {
     free(table);
 }
 
+// Symbol table constructor
 Status st_init(SymTab *st) {
     st->top = htab_init();
     if (st->top == NULL) {
@@ -155,6 +156,7 @@ Status st_init(SymTab *st) {
     return SUCCESS;
 }
 
+// Used when moving into function / if / while
 Status st_push_frame(SymTab *st) {
     HTab *next = st->top;
     st->top= htab_init();
@@ -165,6 +167,7 @@ Status st_push_frame(SymTab *st) {
     return SUCCESS;
 }
 
+// Find an item with the same key in the current table
 HTabPair *st_lookup(SymTab *st, const char *key, bool topFrameOnly) {
     HTab *currentTable = st->top;
     bool firstPass = true;
@@ -193,10 +196,13 @@ HTabPair *st_lookup(SymTab *st, const char *key, bool topFrameOnly) {
     return NULL;
 }
 
+// Add an item into current table
 Status st_add(SymTab *st, Token token, HTabPair **pair) {
     if (st_lookup(st, token.str, true) != NULL) {
+        // If an item with the same key already exists as a function or a variable in the most local table, it's an error
         return ERR_SEMANTIC_DEF;
     } else {
+        // If not found, add a new item and fill the information in
         *pair = htab_insert(st->top, token.str);
         (*pair)->value.varType = token_literal_to_type(token.type);
         (*pair)->value.ID = st->idCounter++;
@@ -204,12 +210,14 @@ Status st_add(SymTab *st, Token token, HTabPair **pair) {
     }
 }
 
+// Used when moving out of function / if / while
 void st_pop_frame(SymTab *st) {
     HTab *deleted = st->top;
     st->top = st->top->next;
     htab_destroy(deleted);
 }
 
+// Symbol table destructor
 void st_destroy(SymTab *st) {
     while (st->top) {
         HTab *deleted = st->top;
@@ -218,12 +226,15 @@ void st_destroy(SymTab *st) {
     }
 }
 
+// Used to convert token type into type
 Type st_token_to_type(SymTab *st, Token token) {
+    // Check if token is type literal
     Type type = token_literal_to_type(token.type);
     if (type != TYPE_NONE) {
         return type;
     }
 
+    // Check if token is a fn / var in symbol table
     HTabPair *pair = st_lookup(st, token.str, false);
     if (pair != NULL) {
         return pair->value.varType;

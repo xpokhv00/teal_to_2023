@@ -16,6 +16,7 @@ bool isNumeric(Type type) {
     return (type == INTEGER) || (type == NUMBER);
 }
 
+// Used to convert token type of literals to type
 Type token_literal_to_type(TokenType tt) {
     switch (tt) {
         case TOKEN_INTEGER_LIT:
@@ -35,6 +36,7 @@ Type token_literal_to_type(TokenType tt) {
     }
 }
 
+// Used to convert token type of keywords to type
 Type token_keyword_to_type(TokenType tt) {
     switch (tt) {
         case TOKEN_INTEGER_KW:
@@ -54,6 +56,7 @@ Type token_keyword_to_type(TokenType tt) {
     }
 }
 
+// List constructor
 TypeList list_init() {
     TypeList list;
     list.first = NULL;
@@ -61,11 +64,13 @@ TypeList list_init() {
     return list;
 }
 
+// Append an item behind an existing list
 Status list_append(TypeList *list, Type type) {
     TypeListItem **current = &list->first;
     while (*current) {
         current = &(*current)->next;
     }
+
     (*current) = malloc(sizeof(TypeListItem));
     if (*current == NULL) {
         return ERR_INTERNAL;
@@ -77,20 +82,24 @@ Status list_append(TypeList *list, Type type) {
     return SUCCESS;
 }
 
+// Set activity to the first item
 void list_first(TypeList *list) {
     list->active = list->first;
 }
 
+// Set activity to the next item
 void list_next(TypeList *list) {
     if (list->active) {
         list->active = list->active->next;
     }
 }
 
+// Return whether a list is active or not
 bool list_is_active(TypeList *list) {
     return list->active != NULL;
 }
 
+// Return type of the active item
 Type list_get_active(TypeList *list) {
     if (list->active) {
         return list->active->type;
@@ -98,6 +107,7 @@ Type list_get_active(TypeList *list) {
     return TYPE_NONE;
 }
 
+// List destructor
 void list_destroy(TypeList *list) {
     TypeListItem *current = list->first;
     while (current) {
@@ -107,6 +117,7 @@ void list_destroy(TypeList *list) {
     }
 }
 
+// Return index of currently active item
 unsigned list_active_index(TypeList *list) {
     unsigned count = 0;
     TypeListItem *current = list->first;
@@ -117,6 +128,7 @@ unsigned list_active_index(TypeList *list) {
     return count;
 }
 
+// Return number of list items
 unsigned list_count(TypeList *list) {
     unsigned i = 0;
     TypeListItem *current = list->first;
@@ -127,6 +139,7 @@ unsigned list_count(TypeList *list) {
     return i;
 }
 
+// Check if two srcList can be assigned / converted to dstList
 bool list_can_assign(TypeList *dstList, TypeList *srcList) {
     list_first(dstList);
     list_first(srcList);
@@ -143,6 +156,7 @@ bool list_can_assign(TypeList *dstList, TypeList *srcList) {
     return true;
 }
 
+// Check if src can be assigned / converted to dst without any incompability
 bool can_assign(Type dst, Type src) {
     if (dst == src) {
         return true;

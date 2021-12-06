@@ -28,13 +28,13 @@ typedef enum {
 typedef struct typelistitem TypeListItem;
 
 struct typelistitem {
-    Type type;
-    TypeListItem *next;
+    Type type;              // Data type of item
+    TypeListItem *next;     // Pointer to the next item
 };
 
 typedef struct {
-    TypeListItem *first;
-    TypeListItem *active;
+    TypeListItem *first;    // Pointer to the first item
+    TypeListItem *active;   // Pointer to the active item
 } TypeList;
 
 // Token and type functions

@@ -398,9 +398,7 @@ Status scanner_get_token(Token *pToken) {
                 break;
 
             case SCANNER_NUMBER_POINT:
-                if (input == 'e' || input == 'E') {
-                    state = SCANNER_EXP_BASE;
-                } else if (input >= '0' && input <= '9') {
+                if (input >= '0' && input <= '9') {
                     state = SCANNER_DOUBLE;
                 } else {
                     return ERR_LEXICAL;

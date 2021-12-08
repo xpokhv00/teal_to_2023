@@ -1,5 +1,5 @@
 /**
- * @file symtab.c
+ * @file symtable.c
  *
  * @author Hnatovskyj Vítek xhnato00
  * @author Lán Rostislav xlanro00

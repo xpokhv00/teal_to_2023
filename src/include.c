@@ -1,5 +1,5 @@
 /**
- * @file include.h
+ * @file include.c
  *
  * @author Hnatovskyj Vítek xhnato00
  * @author Lán Rostislav xlanro00

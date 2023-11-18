@@ -11,7 +11,7 @@
 
 #include <ctype.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include "scanner.h"
 
 #define ALLOC_SIZE 64
@@ -83,63 +83,64 @@ Status scanner_get_token(Token *pToken) {
                 switch (input) {
                     case ':':
                         state = SCANNER_COLON;
-                        pToken->type = TOKEN_COLON;
+                        pToken->type = TYPE_COLON;
                         break;
                     case '+':
                         state = SCANNER_PLUS;
-                        pToken->type = TOKEN_PLUS;
+                        pToken->type = TYPE_PLUS;
                         break;
                     case '-':
                         state = SCANNER_MINUS;
-                        pToken->type = TOKEN_MINUS;
+                        pToken->type = TYPE_MINUS;
                         break;
                     case '*':
                         state = SCANNER_MULTIPLY;
-                        pToken->type = TOKEN_MULTIPLY;
+                        pToken->type = TYPE_MUL;
                         break;
                     case '/':
                         state = SCANNER_DIVIDE;
-                        pToken->type = TOKEN_DIVIDE;
+                        pToken->type = TYPE_DIV;
                         break;
                     case '.':
                         state = SCANNER_DOT;
                         break;
                     case '>':
                         state = SCANNER_GT;
-                        pToken->type = TOKEN_GT;
+                        pToken->type = TYPE_GT;
                         break;
                     case '<':
                         state = SCANNER_LT;
-                        pToken->type = TOKEN_LT;
-                        break;
-                    case '~':
-                        state = SCANNER_TILDA;
+                        pToken->type = TYPE_LT;
                         break;
                     case '=':
                         state = SCANNER_ONE_EQUALS;
                         break;
-                    case '#':
-                        state = SCANNER_GET_LENGTH;
-                        pToken->type = TOKEN_GET_LENGTH;
-                        break;
                     case '\"':
                         state = SCANNER_STRING_START;
-                        pToken->type = TOKEN_STRING_LIT;
+                        pToken->type = TYPE_STRING_LIT;
                         break;
                     case ',':
                         state = SCANNER_COMMA;
-                        pToken->type = TOKEN_COMMA;
+                        pToken->type = TYPE_COMMA;
                         break;
                     case '(':
                         state = SCANNER_PAR_L;
-                        pToken->type = TOKEN_PAR_L;
+                        pToken->type = TYPE_LEFT_BRACKET;
                         break;
                     case ')':
                         state = SCANNER_PAR_R;
-                        pToken->type = TOKEN_PAR_R;
+                        pToken->type = TYPE_RIGHT_BRACKET;
+                        break;
+                    case '{':
+                        state = SCANNER_CUR_PAR_L;
+                        pToken->type = TYPE_LEFT_CURLY_BRACKET;
+                        break;
+                    case '}':
+                        state = SCANNER_CUR_PAR_R;
+                        pToken->type = TYPE_RIGHT_CURLY_BRACKET;
                         break;
                     case EOF:
-                        pToken->type = TOKEN_EOF;
+                        pToken->type = TYPE_EOF;
                         state = SCANNER_EOF;
                         break;
 
@@ -158,13 +159,13 @@ Status scanner_get_token(Token *pToken) {
                 }
                 break;
 
-            case SCANNER_CONCATENATE:
             case SCANNER_COLON:
             case SCANNER_NEQ:
-            case SCANNER_GET_LENGTH:
             case SCANNER_EOF:
             case SCANNER_PAR_L:
             case SCANNER_PAR_R:
+            case SCANNER_CUR_PAR_L:
+            case SCANNER_CUR_PAR_R:
             case SCANNER_COMMA:
             SCAN_END();
 
@@ -191,7 +192,7 @@ Status scanner_get_token(Token *pToken) {
                 break;
 
             case SCANNER_STRING_FINAL:
-                pToken->type = TOKEN_STRING_LIT;
+                pToken->type = TYPE_STRING_LIT;
                 SCAN_END();
 
             case SCANNER_ESC_SEQ:
@@ -269,7 +270,7 @@ Status scanner_get_token(Token *pToken) {
                 break;
 
             case SCANNER_PLUS:
-                SCAN_END();
+            SCAN_END();
 
             case SCANNER_DIVIDE:
                 if (input == '/') {
@@ -279,35 +280,22 @@ Status scanner_get_token(Token *pToken) {
                     SCAN_END();
                 }
 
-            case SCANNER_INT_DIVIDE:
-                pToken->type = TOKEN_INT_DIVIDE;
-                SCAN_END();
-
             case SCANNER_MULTIPLY:
-                SCAN_END();
-
-            case SCANNER_DOT:
-                if (input == '.') {
-                    state = SCANNER_CONCATENATE;
-                    pToken->type = TOKEN_CONCATENATE;
-                } else {
-                    return ERR_LEXICAL;
-                }
-                break;
+            SCAN_END();
 
             case SCANNER_ONE_EQUALS:
                 if (input == '=') {
                     state = SCANNER_EQ;
-                    pToken->type = TOKEN_EQUALS;
+                    pToken->type = TYPE_EQUAL;
 
                 } else {
-                    pToken->type = TOKEN_ASSIGN;
+                    pToken->type = TYPE_ASSIGN;
                     SCAN_END();
                 }
                 break;
 
             case SCANNER_EQ:
-                SCAN_END();
+            SCAN_END();
 
             case SCANNER_LT:
                 if (input == '=') {
@@ -328,16 +316,16 @@ Status scanner_get_token(Token *pToken) {
                 }
 
             case SCANNER_LEQ:
-                pToken->type = TOKEN_LEQ;
+                pToken->type = TYPE_LEQ;
                 SCAN_END();
 
             case SCANNER_GTE:
-                pToken->type = TOKEN_GEQ;
+                pToken->type = TYPE_GEQ;
                 SCAN_END();
 
             case SCANNER_TILDA:
                 if (input == '=') {
-                    pToken->type = TOKEN_NEQ;
+                    pToken->type = TYPE_NEQ;
                     state = SCANNER_NEQ;
                 } else {
                     return ERR_LEXICAL;
@@ -391,8 +379,8 @@ Status scanner_get_token(Token *pToken) {
                     state = SCANNER_NUMBER_POINT;
                 } else if (input == 'e' || input == 'E') {
                     state = SCANNER_EXP_BASE;
-                }else {
-                    pToken->type = TOKEN_INTEGER_LIT;
+                } else {
+                    pToken->type = TYPE_INTEGER_LIT;
                     SCAN_END();
                 }
                 break;
@@ -407,11 +395,11 @@ Status scanner_get_token(Token *pToken) {
 
             case SCANNER_DOUBLE:
                 if (input >= '0' && input <= '9') {
-                    
+
                 } else if (input == 'e' || input == 'E') {
                     state = SCANNER_EXP_BASE;
                 } else {
-                    pToken->type = TOKEN_DOUBLE_LIT;
+                    pToken->type = TYPE_DOUBLE_LIT;
                     SCAN_END();
                 }
                 break;
@@ -436,9 +424,9 @@ Status scanner_get_token(Token *pToken) {
 
             case SCANNER_EXP:
                 if (input >= '0' && input <= '9') {
-                    
+
                 } else {
-                    pToken->type = TOKEN_DOUBLE_LIT;
+                    pToken->type = TYPE_DOUBLE_LIT;
                     SCAN_END();
                 }
                 break;
@@ -450,38 +438,32 @@ Status scanner_get_token(Token *pToken) {
                 } else {
                     pToken->str[str_index] = '\0';
                     nextLetter = input;
-                    if (!strcmp(pToken->str, "do")) {
-                        pToken->type = TOKEN_DO;
-                    } else if (!strcmp(pToken->str, "else")) {
-                        pToken->type = TOKEN_ELSE;
+                    if (!strcmp(pToken->str, "else")) {
+                        pToken->type = TYPE_ELSE;
                     } else if (!strcmp(pToken->str, "end")) {
-                        pToken->type = TOKEN_END;
-                    } else if (!strcmp(pToken->str, "function")) {
-                        pToken->type = TOKEN_FUNCTION;
-                    } else if (!strcmp(pToken->str, "global")) {
-                        pToken->type = TOKEN_GLOBAL;
+                        pToken->type = TYPE_END;
+                    } else if (!strcmp(pToken->str, "let")) {
+                        pToken->type = TYPE_LET;
+                    } else if (!strcmp(pToken->str, "var")) {
+                        pToken->type = TYPE_VAR;
+                    } else if (!strcmp(pToken->str, "func")) {
+                        pToken->type = TYPE_FUNCTION;
                     } else if (!strcmp(pToken->str, "if")) {
-                        pToken->type = TOKEN_IF;
-                    } else if (!strcmp(pToken->str, "integer")) {
-                        pToken->type = TOKEN_INTEGER_KW;
-                    } else if (!strcmp(pToken->str, "local")) {
-                        pToken->type = TOKEN_LOCAL;
-                    } else if (!strcmp(pToken->str, "nil")) {
-                        pToken->type = TOKEN_NIL;
-                    } else if (!strcmp(pToken->str, "number")) {
-                        pToken->type = TOKEN_NUMBER_KW;
+                        pToken->type = TYPE_IF;
                     } else if (!strcmp(pToken->str, "require")) {
-                        pToken->type = TOKEN_REQUIRE;
+                        pToken->type = TYPE_REQUIRE;
+                    } else if (!strcmp(pToken->str, "Int")) {
+                        pToken->type = TYPE_INTEGER_KW;
+                    } else if (!strcmp(pToken->str, "nil")) {
+                        pToken->type = TYPE_NIL;
                     } else if (!strcmp(pToken->str, "return")) {
-                        pToken->type = TOKEN_RETURN;
+                        pToken->type = TYPE_RETURN;
                     } else if (!strcmp(pToken->str, "string")) {
-                        pToken->type = TOKEN_STRING_KW;
-                    } else if (!strcmp(pToken->str, "then")) {
-                        pToken->type = TOKEN_THEN;
+                        pToken->type = TYPE_STRING_KW;
                     } else if (!strcmp(pToken->str, "while")) {
-                        pToken->type = TOKEN_WHILE;
+                        pToken->type = TYPE_WHILE;
                     } else {
-                        pToken->type = TOKEN_IDENTIFIER;
+                        pToken->type = TYPE_ID;
                     }
                     return SUCCESS;
                 }
@@ -498,7 +480,7 @@ Status scanner_get_token(Token *pToken) {
             }
             pToken->str = tmp;
         }
-        pToken->str[str_index++] = (char)input;
+        pToken->str[str_index++] = (char) input;
     }
 }
 

@@ -19,16 +19,16 @@ bool isNumeric(Type type) {
 // Used to convert token type of literals to type
 Type token_literal_to_type(TokenType tt) {
     switch (tt) {
-        case TOKEN_INTEGER_LIT:
+        case TYPE_INTEGER_LIT:
             return INTEGER;
 
-        case TOKEN_DOUBLE_LIT:
+        case TYPE_DOUBLE_LIT:
             return NUMBER;
 
-        case TOKEN_STRING_LIT:
+        case TYPE_STRING_LIT:
             return STRING;
 
-        case TOKEN_NIL:
+        case TYPE_NIL:
             return NIL;
 
         default:
@@ -39,16 +39,16 @@ Type token_literal_to_type(TokenType tt) {
 // Used to convert token type of keywords to type
 Type token_keyword_to_type(TokenType tt) {
     switch (tt) {
-        case TOKEN_INTEGER_KW:
+        case TYPE_INTEGER_KW:
             return INTEGER;
 
-        case TOKEN_NUMBER_KW:
+        case TYPE_NUMBER_KW:
             return NUMBER;
 
-        case TOKEN_STRING_KW:
+        case TYPE_STRING_KW:
             return STRING;
 
-        case TOKEN_NIL:
+        case TYPE_NIL:
             return NIL;
 
         default:

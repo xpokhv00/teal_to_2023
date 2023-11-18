@@ -136,43 +136,36 @@ Status symstack_push_above_top_terminal(SymStack* s, Symbol item) {
 
 SymbolType tokentype_to_symboltype(TokenType tt) {
     switch(tt) {
-        case TOKEN_INTEGER_LIT:
-        case TOKEN_DOUBLE_LIT:
-        case TOKEN_STRING_LIT:
-        case TOKEN_NIL:
-        case TOKEN_IDENTIFIER:
+        case TYPE_INTEGER_LIT:
+        case TYPE_DOUBLE_LIT:
+        case TYPE_STRING_LIT:
+        case TYPE_NIL:
+        case TYPE_ID:
             return S_VALUE;
 
-        case TOKEN_MULTIPLY:
-        case TOKEN_DIVIDE:
-        case TOKEN_INT_DIVIDE:
+        case TYPE_MUL:
+        case TYPE_DIV:
             return S_MULDIV;
 
-        case TOKEN_PLUS:
-        case TOKEN_MINUS:
+        case TYPE_PLUS:
+        case TYPE_MINUS:
             return S_ADDSUB;
 
-        case TOKEN_GT:
-        case TOKEN_LT:
-        case TOKEN_LEQ:
-        case TOKEN_GEQ:
+        case TYPE_GT:
+        case TYPE_LT:
+        case TYPE_LEQ:
+        case TYPE_GEQ:
             return S_COMPARE;
 
-        case TOKEN_EQUALS:
-        case TOKEN_NEQ:
+        case TYPE_EQUAL:
+        case TYPE_NEQ:
             return S_EQNEQ;
 
-        case TOKEN_PAR_L:
+        case TYPE_LEFT_BRACKET:
             return S_PARL;
 
-        case TOKEN_PAR_R:
+        case TYPE_RIGHT_BRACKET:
             return S_PARR;
-
-        case TOKEN_GET_LENGTH:
-            return S_GETLEN;
-
-        case TOKEN_CONCATENATE:
-            return S_CONCAT;
 
         default:
             return S_NONE;
@@ -516,7 +509,7 @@ Status reduce_addsub(SymStack *s) {
 
     checkOperandsNotNil();
 
-    if (op.token.type == TOKEN_PLUS) {
+    if (op.token.type == TYPE_PLUS) {
         gen_print("ADDS\n");
     } else {
         gen_print("SUBS\n");
@@ -548,21 +541,13 @@ Status reduce_muldiv(SymStack *s) {
     }
 
     switch (op.token.type) {
-        case TOKEN_MULTIPLY:
+        case TYPE_MUL:
             gen_print("MULS\n");
             break;
 
-        case TOKEN_DIVIDE:
+        case TYPE_DIV:
             checkNotZero();
             gen_print("DIVS\n");
-            break;
-
-        case TOKEN_INT_DIVIDE:
-            if (resultType != INTEGER) {
-                return ERR_SEMANTIC_EXPR;
-            }
-            checkNotZero();
-            gen_print("IDIVS\n");
             break;
 
         default:
@@ -656,19 +641,19 @@ Status reduce_compare(SymStack *s) {
     }
 
     switch (op.token.type) {
-        case TOKEN_LT:
+        case TYPE_LT:
             gen_print("LTS\n");
             break;
 
-        case TOKEN_GT:
+        case TYPE_GT:
             gen_print("GTS\n");
             break;
 
-        case TOKEN_LEQ:
+        case TYPE_LEQ:
             gen_print("GTS\nNOTS\n");
             break;
 
-        case TOKEN_GEQ:
+        case TYPE_GEQ:
             gen_print("LTS\nNOTS\n");
             break;
 
@@ -718,7 +703,7 @@ Status reduce_equality(SymStack *s) {
     // Do the same thing for both EQ and NEQ
     gen_print("EQS\n");
     // The only difference between EQ and NEQ is the negation
-    if (op.token.type == TOKEN_NEQ) {
+    if (op.token.type == TYPE_NEQ) {
         gen_print("NOTS\n");
     }
 

@@ -89,16 +89,16 @@ void gen_destroy() {
 
 Status gen_print_literal(Token token) {
     switch (token.type) {
-        case TOKEN_INTEGER_LIT:
+        case TYPE_INTEGER_LIT:
             gen_print("int@%s", token.str);
             break;
 
-        case TOKEN_DOUBLE_LIT:;
+        case TYPE_DOUBLE_LIT:;
             double value = strtod(token.str, NULL);
             gen_print("float@%a", value);
             break;
 
-        case TOKEN_STRING_LIT:;
+        case TYPE_STRING_LIT:;
             // string with actual byte values, escape sequences will be decoded
             char *in = token.str;
             char *out = calloc(4*strlen(token.str)+10, sizeof(char));
@@ -140,7 +140,7 @@ Status gen_print_literal(Token token) {
             free(out);
             break;
 
-        case TOKEN_NIL:
+        case TYPE_NIL:
             gen_print("nil@nil");
             break;
 
@@ -152,14 +152,14 @@ Status gen_print_literal(Token token) {
 
 
 Status gen_print_value(Token token, SymTab* st) {
-    if (token.type == TOKEN_IDENTIFIER) {
+    if (token.type == TYPE_ID) {
         return gen_print_var(token, st);
     }
     return gen_print_literal(token);
 }
 
 Status gen_print_var(Token token, SymTab* st) {
-    if (token.type == TOKEN_IDENTIFIER) {
+    if (token.type == TYPE_ID) {
         HTabPair *pair = st_lookup(st, token.str, false);
         if (pair == NULL) {
             return ERR_SEMANTIC_DEF;

@@ -19,71 +19,16 @@ static SymTab st;
 
 static unsigned callNumber = 0;
 
-#define GET_NEW_TOKEN() scanner_destroy_token(&token); \
-status = scanner_get_token(&token); \
-if (status != SUCCESS) { break; }
-
-#define ASSERT_TOKEN_TYPE(token_type) if (token.type != (token_type)) { break; }
-
-#define ASSERT_NT(nt_function_return) if (!(nt_function_return)) { break; }
-
-#define ASSERT_SUCCESS(fn_return) if ((status = (fn_return)) != SUCCESS) { break; }
-
-bool nt_prog();
-bool nt_prolog();
-bool nt_prog_body();
-
-bool nt_fn_decl();
-bool nt_fn_decl_params(HTabPair *pair);
-bool nt_fn_decl_params_next(HTabPair *pair);
-bool nt_fn_def();
-bool nt_fn_def_params(HTabPair *pair, bool isDeclared);
-bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared);
-bool nt_fn_returns(HTabPair *pair, bool declared);
-bool nt_fn_returns_next(HTabPair *pair, bool declared);
-
-bool nt_fn_body(HTabPair *fnPair);
-
-bool nt_var_decl();
-
-bool nt_var_decl_assign(Type *assignedType);
-
-bool nt_assignment(HTabPair *fnPair);
-
-bool nt_if(HTabPair *fnPair);
-
-bool nt_else(HTabPair *fnPair);
-
-bool nt_while(HTabPair *fnPair);
-
-bool nt_return(HTabPair *fnPair);
-
-bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *listAssign);
-
-bool nt_r_value_list_next(HTabPair *fnPair, TypeList *listAssign);
-
-bool nt_l_value_list(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater);
-
-bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generateLater);
-
-bool nt_fn_call(bool discardReturn);
-bool nt_fn_call_params(HTabPair *callPair);
-bool nt_fn_call_params_next(HTabPair *callPair);
-bool nt_type();
-
 
 bool nt_prog() {
     bool found = false;
 
     switch (token.type) {
         // pravidlo <prog> -> <prolog> <prog_body>
-        case TOKEN_REQUIRE:
+        default:
             ASSERT_NT(nt_prolog());
             ASSERT_NT(nt_prog_body());
             found = true;
-            break;
-
-        default:
             break;
     }
     return found;
@@ -94,23 +39,11 @@ bool nt_prolog() {
 
     switch (token.type) {
         // pravidlo <prolog> -> TOKEN_REQUIRE TOKEN_STRING_LIT
-        case TOKEN_REQUIRE:
-            GET_NEW_TOKEN();
-            // the next token must be string literal "ifj21"
-            ASSERT_TOKEN_TYPE(TOKEN_STRING_LIT);
-            if (strcmp(token.str, "\"ifj21\"") != 0) {
-                status = ERR_SEMANTIC_OTHER;
-                break;
-            }
-            GET_NEW_TOKEN();
-
+        default:
             ASSERT_SUCCESS(add_builtin_fn(&st));
             gen_print("%s", includeCode);
 
             found = true;
-            break;
-
-        default:
             break;
     }
     return found;
@@ -120,17 +53,17 @@ bool nt_prog_body() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_GLOBAL:
-            // <prog_body> -> <fn_decl> <prog_body>
-            found = nt_fn_decl() && nt_prog_body();
-            break;
+//        case TOKEN_GLOBAL:
+//            // <prog_body> -> <fn_decl> <prog_body>
+//            found = nt_fn_decl() && nt_prog_body();
+//            break;
 
-        case TOKEN_FUNCTION:
+        case TYPE_FUNCTION:
             // <prog_body> -> <fn_def> <prog_body>
             found = nt_fn_def() && nt_prog_body();
             break;
 
-        case TOKEN_IDENTIFIER:;
+        case TYPE_ID:;
             // <prog_body> -> <fn_call> <prog_body>
             // the interpreter has to jump from call to call
             // it has to skip the definitions inbetween
@@ -143,7 +76,7 @@ bool nt_prog_body() {
             found = true;
             break;
 
-        case TOKEN_EOF:
+        case TYPE_EOF:
             // pravidlo <prog_body> -> eps
             // The last label, after which the execution is ended
             gen_print("LABEL %%start%u\n", callNumber);
@@ -166,9 +99,9 @@ bool nt_fn_decl() {
         // TOKEN_GLOBAL TOKEN_IDENTIFIER TOKEN_COLON TOKEN_FUNCTION
         // TOKEN_PAR_L <fn_decl_params> TOKEN_PAR_R <fn_returns>
         // example global foo : function(string) : string
-        case TOKEN_GLOBAL:
+        case TYPE_GLOBAL:
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            ASSERT_TOKEN_TYPE(TYPE_ID);
 
             // Checks if identifier already exists in symtable
             // If not creates one
@@ -176,16 +109,16 @@ bool nt_fn_decl() {
             ASSERT_SUCCESS(st_add(&st, token, &pair));
 
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            ASSERT_TOKEN_TYPE(TYPE_COLON);
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_FUNCTION);
+            ASSERT_TOKEN_TYPE(TYPE_FUNCTION);
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            ASSERT_TOKEN_TYPE(TYPE_LEFT_BRACKET);
             GET_NEW_TOKEN();
             if (!nt_fn_decl_params(pair)) {
                 break;
             }
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
+            ASSERT_TOKEN_TYPE(TYPE_RIGHT_BRACKET);
             GET_NEW_TOKEN();
             if (!nt_fn_returns(pair, false)) {
                 break;
@@ -205,10 +138,10 @@ bool nt_fn_decl_params(HTabPair *pair) {
 
     switch (token.type) {
         // <fn_decl_params> -> <type> <fn_decl_params_next>
-        case TOKEN_INTEGER_KW:
-        case TOKEN_NUMBER_KW:
-        case TOKEN_STRING_KW:
-        case TOKEN_NIL:;
+        case TYPE_INTEGER_KW:
+        case TYPE_NUMBER_KW:
+        case TYPE_STRING_KW:
+        case TYPE_NIL:;
 
             // Adds parameter name into parameter list of a function
             ASSERT_SUCCESS(list_append(&pair->value.paramList, token_keyword_to_type(token.type)));
@@ -230,7 +163,7 @@ bool nt_fn_decl_params_next(HTabPair *pair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:
+        case TYPE_COMMA:
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
 
@@ -257,12 +190,12 @@ bool nt_fn_def() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_FUNCTION:
+        case TYPE_FUNCTION:
             // <fn_def> -> TOKEN_FUNCTION TOKEN_IDENTIFIER
             // TOKEN_PAR_L <fn_def_params> TOKEN_PAR_R
             // <fn_returns> <fn_body> TOKEN_END
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            ASSERT_TOKEN_TYPE(TYPE_ID);
 
             // Check if function is already declared
             HTabPair *fnPair = st_lookup(&st, token.str, false);
@@ -283,7 +216,7 @@ bool nt_fn_def() {
 
             gen_print("LABEL %s\n", token.str);
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            ASSERT_TOKEN_TYPE(TYPE_LEFT_BRACKET);
             GET_NEW_TOKEN();
 
             // Create local frame for this function
@@ -291,7 +224,9 @@ bool nt_fn_def() {
 
             gen_print("PUSHFRAME\n");
             ASSERT_NT(nt_fn_def_params(fnPair, isDeclared));
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
+            ASSERT_TOKEN_TYPE(TYPE_RIGHT_BRACKET);
+            GET_NEW_TOKEN();
+            ASSERT_TOKEN_TYPE(TYPE_LEFT_CURLY_BRACKET);
             GET_NEW_TOKEN();
             ASSERT_NT(nt_fn_returns(fnPair, isDeclared));
             ASSERT_NT(nt_fn_body(fnPair));
@@ -309,7 +244,7 @@ bool nt_fn_def() {
             // Destroy local frame
             st_pop_frame(&st);
 
-            ASSERT_TOKEN_TYPE(TOKEN_END);
+            ASSERT_TOKEN_TYPE(TYPE_RIGHT_CURLY_BRACKET);
             GET_NEW_TOKEN();
             found = true;
             break;
@@ -324,7 +259,7 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:;
+        case TYPE_ID:;
             // <fn_def_params> -> TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_def_params_next>
 
             // Check for parameter name in symtable, add it if not found
@@ -332,7 +267,7 @@ bool nt_fn_def_params(HTabPair *pair, bool isDeclared) {
             ASSERT_SUCCESS(st_add(&st, token, &paramPair));
 
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            ASSERT_TOKEN_TYPE(TYPE_COLON);
             GET_NEW_TOKEN();
 
             list_first(&pair->value.paramList);
@@ -386,17 +321,17 @@ bool nt_fn_def_params_next(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:
+        case TYPE_COMMA:
             // <fn_def_params_next> -> TOKEN_COMMA TOKEN_IDENTIFIER TOKEN_COLON <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            ASSERT_TOKEN_TYPE(TYPE_ID);
 
             // Check for parameter name in symtable, add it if not found
             HTabPair *paramPair;
             ASSERT_SUCCESS(st_add(&st, token, &paramPair));
 
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            ASSERT_TOKEN_TYPE(TYPE_COLON);
             GET_NEW_TOKEN();
 
             paramPair->value.varType = token_keyword_to_type(token.type);
@@ -451,7 +386,7 @@ bool nt_fn_returns(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COLON:
+        case TYPE_COLON:
             // <fn_returns> -> TOKEN_COLON <type> <fn_returns_next>
             GET_NEW_TOKEN();
 
@@ -500,7 +435,7 @@ bool nt_fn_returns_next(HTabPair *pair, bool isDeclared) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:
+        case TYPE_COMMA:
             // <fn_returns_next> -> TOKEN_COMMA <type> <fn_returns_next>
             GET_NEW_TOKEN();
 
@@ -550,14 +485,14 @@ bool nt_fn_body(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_LOCAL:
+        case TYPE_VAR:
             // variable declaration
             ASSERT_NT(nt_var_decl());
             ASSERT_NT(nt_fn_body(fnPair));
             found = true;
             break;
 
-        case TOKEN_IDENTIFIER:;
+        case TYPE_ID:;
             // assignment or function call
             // <fn_body> -> <assignment> <fn_body>
             // <fn_body> -> <fn_call> <fn_body>
@@ -565,7 +500,7 @@ bool nt_fn_body(HTabPair *fnPair) {
             // Get next token to know what we're dealing with
             Token nextToken;
             ASSERT_SUCCESS(scanner_get_token(&nextToken));
-            bool isFunction = (nextToken.type == TOKEN_PAR_L);
+            bool isFunction = (nextToken.type == TYPE_LEFT_BRACKET);
             scanner_unget_token(nextToken);
 
             if (isFunction) {
@@ -578,17 +513,17 @@ bool nt_fn_body(HTabPair *fnPair) {
             found = true;
             break;
 
-        case TOKEN_RETURN:
+        case TYPE_RETURN:
             ASSERT_NT(nt_return(fnPair));
             ASSERT_NT(nt_fn_body(fnPair)); // TODO maybe stop after return?
             found = true;
             break;
 
-        case TOKEN_IF:
+        case TYPE_IF:
             found = nt_if(fnPair) && nt_fn_body(fnPair);
             break;
 
-        case TOKEN_WHILE:
+        case TYPE_WHILE:
             found = nt_while(fnPair) && nt_fn_body(fnPair);
             break;
 
@@ -603,9 +538,9 @@ bool nt_var_decl() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_LOCAL:
+        case TYPE_VAR:
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            ASSERT_TOKEN_TYPE(TYPE_ID);
 
             // Save the identifier for later, when we define the variable
             Token idToken = token;
@@ -613,7 +548,7 @@ bool nt_var_decl() {
             if (status != SUCCESS) {
                 break;
             }
-            ASSERT_TOKEN_TYPE(TOKEN_COLON);
+            ASSERT_TOKEN_TYPE(TYPE_COLON);
             GET_NEW_TOKEN();
 
             // Save the type for later, when we define the variable
@@ -661,16 +596,16 @@ bool nt_var_decl_assign(Type *assignedType) {
     Type returnType;
 
     switch (token.type) {
-        case TOKEN_ASSIGN:
+        case TYPE_ASSIGN:
             GET_NEW_TOKEN();
 
             bool isFunction = false;
 
-            if (token.type == TOKEN_IDENTIFIER) {
+            if (token.type == TYPE_ID) {
                 // This could be an expression or function call
                 Token nextToken;
                 ASSERT_SUCCESS(scanner_get_token(&nextToken));
-                isFunction = (nextToken.type == TOKEN_PAR_L);
+                isFunction = (nextToken.type == TYPE_LEFT_BRACKET);
                 scanner_unget_token(nextToken);
             }
 
@@ -719,14 +654,14 @@ bool nt_assignment(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:;
+        case TYPE_ID:;
             TypeList dstList = list_init();
 
             // Tokens of l-values will be stored here
             SymStack generateLater;
             symstack_init(&generateLater);
             ASSERT_NT(nt_l_value_list(fnPair, &dstList, &generateLater));
-            ASSERT_TOKEN_TYPE(TOKEN_ASSIGN);
+            ASSERT_TOKEN_TYPE(TYPE_ASSIGN);
             GET_NEW_TOKEN();
 
             bool isFunction = false;
@@ -736,12 +671,12 @@ bool nt_assignment(HTabPair *fnPair) {
             HTabPair *calledFnPair;
 
             // In order to be a function, the token must be an identifier
-            if (token.type == TOKEN_IDENTIFIER) {
+            if (token.type == TYPE_ID) {
                 // Check if the identifier is a variable or a function
                 // Get next token to know what we're dealing with
                 Token nextToken;
                 ASSERT_SUCCESS(scanner_get_token(&nextToken));
-                isFunction = (nextToken.type == TOKEN_PAR_L);
+                isFunction = (nextToken.type == TYPE_LEFT_BRACKET);
                 scanner_unget_token(nextToken);
             }
 
@@ -806,7 +741,7 @@ bool nt_if(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IF:
+        case TYPE_IF:
             // <if> -> TOKEN_IF <expr> TOKEN_THEN <fn_body> <else> TOKEN_END
             GET_NEW_TOKEN();
             ASSERT_NT(nt_expr(&token, &st, &status, NULL));
@@ -820,7 +755,7 @@ bool nt_if(HTabPair *fnPair) {
 
             gen_print("LABEL %%%d\n", thenLabel);
 
-            ASSERT_TOKEN_TYPE(TOKEN_THEN);
+            ASSERT_TOKEN_TYPE(TYPE_THEN);
             GET_NEW_TOKEN();
 
             st_push_frame(&st);
@@ -831,7 +766,7 @@ bool nt_if(HTabPair *fnPair) {
             gen_print("LABEL %%%d\n", elseLabel);
 
             ASSERT_NT(nt_else(fnPair));
-            ASSERT_TOKEN_TYPE(TOKEN_END);
+            ASSERT_TOKEN_TYPE(TYPE_RIGHT_CURLY_BRACKET);
 
             gen_print("LABEL %%%d\n", endLabel);
 
@@ -849,7 +784,7 @@ bool nt_else(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_ELSE:
+        case TYPE_ELSE:
             // <else> -> TOKEN_ELSE <fn_body>
             GET_NEW_TOKEN();
             st_push_frame(&st);
@@ -870,7 +805,7 @@ bool nt_while(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_WHILE:
+        case TYPE_WHILE:
             // <while> -> TOKEN_WHILE <expr> TOKEN_DO <fn_body> TOKEN_END
             GET_NEW_TOKEN();
 
@@ -890,7 +825,7 @@ bool nt_while(HTabPair *fnPair) {
             gen_print("LABEL %%%d\n", doLabel);
 
             // execute the body of the while
-            ASSERT_TOKEN_TYPE(TOKEN_DO);
+            ASSERT_TOKEN_TYPE(TYPE_DO);
             GET_NEW_TOKEN();
             st_push_frame(&st);
             ASSERT_NT(nt_fn_body(fnPair));
@@ -902,7 +837,7 @@ bool nt_while(HTabPair *fnPair) {
             // end the cycle
             gen_print("LABEL %%%d\n", endLabel);
 
-            ASSERT_TOKEN_TYPE(TOKEN_END);
+            ASSERT_TOKEN_TYPE(TYPE_RIGHT_CURLY_BRACKET);
             GET_NEW_TOKEN();
             found = true;
             break;
@@ -917,7 +852,7 @@ bool nt_return(HTabPair *fnPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_RETURN:
+        case TYPE_RETURN:
             // <return> -> TOKEN_RETURN <r_value_list>
             GET_NEW_TOKEN();
             TypeList typeList = list_init();
@@ -959,13 +894,12 @@ bool nt_r_value_list(bool emptyValid, HTabPair *fnPair, TypeList *srcList) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:
-        case TOKEN_INTEGER_LIT:
-        case TOKEN_DOUBLE_LIT:
-        case TOKEN_STRING_LIT:
-        case TOKEN_NIL:
-        case TOKEN_PAR_L:
-        case TOKEN_GET_LENGTH:;
+        case TYPE_ID:
+        case TYPE_INTEGER_LIT:
+        case TYPE_DOUBLE_LIT:
+        case TYPE_STRING_LIT:
+        case TYPE_NIL:
+        case TYPE_LEFT_BRACKET:;
             // Cannot be a function
             // <r_value_list> -> <expr> <r_value_list_next>
             Type exprType;
@@ -992,7 +926,7 @@ bool nt_r_value_list_next(HTabPair *fnPair, TypeList *srcList) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:
+        case TYPE_COMMA:
             GET_NEW_TOKEN();
             Type exprType;
             ASSERT_NT(nt_expr(&token, &st, &status, &exprType));
@@ -1017,7 +951,7 @@ bool nt_l_value_list(HTabPair *fnPair, TypeList *dstList, SymStack *generateLate
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:;
+        case TYPE_ID:;
 
             // Add variable types from left side to list
             Type lValueType = st_token_to_type(&st, token);
@@ -1048,7 +982,7 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generat
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:
+        case TYPE_COMMA:
             GET_NEW_TOKEN();
 
             // Add variable types from left side to list
@@ -1059,7 +993,7 @@ bool nt_l_value_list_next(HTabPair *fnPair, TypeList *dstList, SymStack *generat
             Symbol s = { .token = token };
             symstack_push(generateLater, s);
 
-            ASSERT_TOKEN_TYPE(TOKEN_IDENTIFIER);
+            ASSERT_TOKEN_TYPE(TYPE_ID);
             // WARNING: do NOT use SCANNER_GET_TOKEN() macro
             // the token needs to stay allocated until the code is generated
             status = scanner_get_token(&token);
@@ -1082,14 +1016,14 @@ bool nt_fn_call(bool discardReturn) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_IDENTIFIER:;
+        case TYPE_ID:;
             // <fn_call> -> TOKEN_IDENTIFIER TOKEN_PAR_L <fn_call_params> TOKEN_PAR_R
 
             // Get the pair of called function
             HTabPair *callPair = st_lookup(&st, token.str, false);
 
             GET_NEW_TOKEN();
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_L);
+            ASSERT_TOKEN_TYPE(TYPE_LEFT_BRACKET);
             GET_NEW_TOKEN();
 
             // Check whether the function is declared or defined
@@ -1115,7 +1049,7 @@ bool nt_fn_call(bool discardReturn) {
                 }
             }
 
-            ASSERT_TOKEN_TYPE(TOKEN_PAR_R);
+            ASSERT_TOKEN_TYPE(TYPE_RIGHT_BRACKET);
             GET_NEW_TOKEN();
             found = true;
             break;
@@ -1131,11 +1065,11 @@ bool nt_fn_call_params(HTabPair *callPair) {
 
     switch (token.type) {
         // <nt_fn_call_params> -> TOKEN_IDENTIFIER <fn_call_params_next>
-        case TOKEN_IDENTIFIER: // This is not needed - only inside function body
-        case TOKEN_INTEGER_LIT:
-        case TOKEN_DOUBLE_LIT:
-        case TOKEN_STRING_LIT:
-        case TOKEN_NIL:;
+        case TYPE_ID: // This is not needed - only inside function body
+        case TYPE_INTEGER_LIT:
+        case TYPE_DOUBLE_LIT:
+        case TYPE_STRING_LIT:
+        case TYPE_NIL:;
 
             if (!callPair->value.specialFn) {
                 // Set activity to the first item
@@ -1190,7 +1124,7 @@ bool nt_fn_call_params_next(HTabPair *callPair) {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_COMMA:
+        case TYPE_COMMA:
             // <fn_decl_params> -> TOKEN_COMMA <type> <fn_decl_params_next>
             GET_NEW_TOKEN();
 
@@ -1249,10 +1183,10 @@ bool nt_type() {
     bool found = false;
 
     switch (token.type) {
-        case TOKEN_INTEGER_KW:
-        case TOKEN_NUMBER_KW:
-        case TOKEN_STRING_KW:
-        case TOKEN_NIL:
+        case TYPE_INTEGER_KW:
+        case TYPE_NUMBER_KW:
+        case TYPE_STRING_KW:
+        case TYPE_NIL:
             GET_NEW_TOKEN();
             found = true;
 
